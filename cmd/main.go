@@ -39,7 +39,7 @@ func init() {
 func main() {
 	conf, err := parseConfig()
 	if err != nil {
-		log.Fatalln("Couldn't parse config", err)
+		log.Fatalln("Couldn't parse config:", err)
 	}
 
 	accs := setupAccounts(conf)
@@ -52,15 +52,9 @@ func main() {
 		c = controller.NewLocal(ctlConf)
 	}
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
-	go func() {
-		s := <-sigCh
-		log.Println("Received signal:", s)
-		cancel()
-	}()
+	handleSignal(cancel)
 
 	log.Println("Starting controller")
 	if err := c.Run(ctx); err != nil {
@@ -91,6 +85,25 @@ func parseConfig() (*Config, error) {
 	return &Config{url, resetDb, dbUri, loadLevels, stepSize, classSize, preparedPortion, remote}, nil
 }
 
+func setupAccounts(conf *Config) []accounts.Classroom {
+	maxConcurrency := maxConcurrency(conf.loadLevels)
+
+	accs, err := accounts.Get(maxConcurrency, conf.classSize)
+	if err != nil {
+		if os.IsNotExist(err) || errors.Is(err, accounts.ErrDumpTooSmall) {
+			generateAccounts(maxConcurrency)
+			os.Exit(0)
+		}
+		log.Fatalln("Couldn't read accounts:", err)
+	}
+
+	if conf.resetDb {
+		restoreDump()
+	}
+
+	return accs
+}
+
 func parseControllerConfig(conf *Config, accounts []accounts.Classroom) controller.Config {
 	lc := controller.NewLoadCurve(conf.loadLevels, conf.stepSize)
 	return controller.Config{
@@ -100,29 +113,14 @@ func parseControllerConfig(conf *Config, accounts []accounts.Classroom) controll
 	}
 }
 
-func setupAccounts(conf *Config) []accounts.Classroom {
-	accs, err := accounts.Read()
-
-	maxConcurrency := maxConcurrency(conf.loadLevels)
-	if err != nil {
-		if os.IsNotExist(err) {
-			generateAccountsAndExit(maxConcurrency)
-		}
-		log.Fatalln("Failed to read accounts file", err)
-	}
-	if len(accs) < maxConcurrency {
-		log.Println("Not enough accounts in current dump to satisfy max concurrency of", maxConcurrency, "generating new accounts file")
-		generateAccountsAndExit(maxConcurrency)
-	}
-
-	if conf.resetDb {
-		log.Println("Resetting MongoDB instance with dumped data")
-		if err = accounts.Restore(context.TODO(), dbUri, accounts.DefaultDumpFile); err != nil {
-			log.Fatalln(err)
-		}
-	}
-
-	return accs
+func handleSignal(cancel context.CancelFunc) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	go func() {
+		s := <-sigCh
+		log.Println("Received signal:", s)
+		cancel()
+	}()
 }
 
 func maxConcurrency(levels controller.LoadLevels) int {
@@ -136,10 +134,19 @@ func maxConcurrency(levels controller.LoadLevels) int {
 	return max
 }
 
-func generateAccountsAndExit(maxConcurrency int) {
+func generateAccounts(maxConcurrency int) {
+	log.Println("Generating new accounts file")
 	if err := accounts.Generate(maxConcurrency, classSize, float32(preparedPortion)); err != nil {
 		log.Fatalln("Failed to generate accounts file", err)
 	}
 	log.Println("A new accounts file has been created. Please create a mongodb dump from it by running the local Meteor server")
-	os.Exit(0)
+}
+
+func restoreDump() {
+	log.Println("Resetting MongoDB instance with dumped data")
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	if err := accounts.Restore(ctx, dbUri, accounts.DefaultDumpFile); err != nil {
+		log.Fatalln("Failed to restore dump:", err)
+	}
 }

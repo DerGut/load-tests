@@ -3,6 +3,7 @@ package accounts
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,6 +20,8 @@ const (
 	nsFrom           = "meteor.*"
 	nsTo             = "pearup.*"
 )
+
+var ErrDumpTooSmall = errors.New("not enough accounts in dump")
 
 func Generate(classConcurrency, classSize int, preparedPortion float32) error {
 	accounts := make([]Classroom, classConcurrency)
@@ -56,6 +59,27 @@ func buildPupils(number, classId int) []Pupil {
 	}
 
 	return p
+}
+
+func Get(classes, size int) ([]Classroom, error) {
+	accounts, err := Read()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(accounts) < classes {
+		return nil, fmt.Errorf("not enough classes: %w", ErrDumpTooSmall)
+	}
+
+	accounts = accounts[:classes]
+	for i, a := range accounts {
+		if len(a.Pupils) < size {
+			return nil, fmt.Errorf("not enough pupils per class: %w", ErrDumpTooSmall)
+		}
+		accounts[i].Pupils = a.Pupils[:size]
+	}
+
+	return accounts, nil
 }
 
 func Read() ([]Classroom, error) {
