@@ -1,4 +1,6 @@
 accounts/data/
+loadrunner/built/
+loadrunner/node_modules/
 
 .env
 main
