@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"time"
@@ -25,7 +26,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&url, "url", "https://prototyp.pearup.de", "The URL to the system under test.")
+	flag.StringVar(&url, "url", "https://beta.pearup.de", "The URL to the system under test.")
 	flag.BoolVar(&resetDb, "resetDb", true, "Whether or not to reset the mongo instance.")
 	flag.StringVar(&dbUri, "dbUri", "", "The URI to the mongo instance.")
 	flag.Var(&loadLevels, "loadLevels", "A comma-separated list of class concurrencies.")
@@ -43,13 +44,13 @@ func main() {
 	}
 
 	accs := setupAccounts(conf)
-	ctlConf := parseControllerConfig(conf, accs)
+	runCfg := parseRunConfig(conf, accs)
 
 	var c controller.Controller
 	if remote {
 		log.Fatalln("No remote runner implemented yet")
 	} else {
-		c = controller.NewLocal(ctlConf)
+		c = controller.NewLocal()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
@@ -57,7 +58,7 @@ func main() {
 	handleSignal(cancel)
 
 	log.Println("Starting controller")
-	if err := c.Run(ctx); err != nil {
+	if err := c.Run(ctx, runCfg); err != nil {
 		log.Fatalln("failed running:", err)
 	}
 }
@@ -104,13 +105,27 @@ func setupAccounts(conf *Config) []accounts.Classroom {
 	return accs
 }
 
-func parseControllerConfig(conf *Config, accounts []accounts.Classroom) controller.Config {
+func parseRunConfig(conf *Config, accounts []accounts.Classroom) controller.RunConfig {
 	lc := controller.NewLoadCurve(conf.loadLevels, conf.stepSize)
-	return controller.Config{
+	return controller.RunConfig{
+		RunID:     runID(),
 		Url:       conf.url,
 		LoadCurve: lc,
 		Accounts:  accounts,
 	}
+}
+
+const (
+	chars    = "1234567890abcdefghijklmnopqrstuvwxyz"
+	runIDLen = 6
+)
+
+func runID() string {
+	b := make([]byte, runIDLen)
+	for i := range b {
+		b[i] = chars[rand.Intn(len(chars))]
+	}
+	return string(b)
 }
 
 func handleSignal(cancel context.CancelFunc) {

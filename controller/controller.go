@@ -3,82 +3,78 @@ package controller
 import (
 	"context"
 	"log"
-	"math"
 
 	"github.com/DerGut/load-tests/accounts"
 	"github.com/DerGut/load-tests/controller/runner"
 )
 
 type Controller interface {
-	Run(ctx context.Context) error
+	Run(ctx context.Context, cfg RunConfig) error
 }
-
-type Config struct {
+type RunConfig struct {
+	RunID     string
 	Url       string
 	LoadCurve *LoadCurve
 	Accounts  []accounts.Classroom
 }
 
 type localController struct {
-	url           string
-	accountIdx    int
-	loadCurve     *LoadCurve
-	accounts      []accounts.Classroom
 	activeRunners []runner.Client
 }
 
-func NewLocal(config Config) Controller {
-	return &localController{url: config.Url, loadCurve: config.LoadCurve, accounts: config.Accounts}
+func NewLocal() Controller {
+	return &localController{}
 }
 
-func (c *localController) Run(ctx context.Context) error {
-	c.loadCurve.Start()
-	c.accountIdx = 0
+func (c *localController) Run(ctx context.Context, cfg RunConfig) error {
+	cfg.LoadCurve.Start()
+	accountIdx := 0
 
 	for {
 		select {
-		case load, more := <-c.loadCurve.C:
+		case load, more := <-cfg.LoadCurve.C:
 			if !more {
 				c.cleanup()
 				return nil
 			}
-			c.nextStep(load)
+			c.nextStep(cfg.RunID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+load])
+			accountIdx += load
 		case <-ctx.Done():
+			cfg.LoadCurve.Stop()
 			c.cleanup()
 			return ctx.Err()
 		}
 	}
 }
 
-func (c *localController) nextStep(load int) {
-	number := runnersForStep(load)
-	accsByRunner := c.nextAccounts(number, load)
+func (c *localController) nextStep(runID string, url string, accs []accounts.Classroom) {
+	accsByRunner := batchAccounts(accs)
 
-	log.Println("Starting", number, "runners with", load, "classes in total")
-	runners := startRunners(c.url, accsByRunner)
+	log.Println("Starting", len(accsByRunner), "runners with", len(accs), "classes in total")
+	runners := startRunners(runID, url, accsByRunner)
 	c.activeRunners = append(c.activeRunners, runners...)
 }
 
-func (c *localController) nextAccounts(runners, classes int) [][]accounts.Classroom {
-	var a [][]accounts.Classroom
-	for i := c.accountIdx; i < c.accountIdx+classes; i += runner.ClassesPerRunner {
-		if i+runner.ClassesPerRunner > classes {
-			remaining := classes - i
-			a = append(a, c.accounts[i:remaining])
-			break
+func batchAccounts(accs []accounts.Classroom) [][]accounts.Classroom {
+	var batches [][]accounts.Classroom
+	for i := 0; i < len(accs); i += runner.ClassesPerRunner {
+		if i+runner.ClassesPerRunner > len(accs) {
+			remaining := len(accs) - i
+			batches = append(batches, accs[i:remaining])
+		} else {
+			batches = append(batches, accs[i:i+runner.ClassesPerRunner])
 		}
-		a = append(a, c.accounts[i:i+runner.ClassesPerRunner])
 	}
-	c.accountIdx += classes
-	return a
+
+	return batches
 }
 
-func startRunners(url string, accsByRunner [][]accounts.Classroom) []runner.Client {
+func startRunners(runID, url string, accsByRunner [][]accounts.Classroom) []runner.Client {
 	rCh := make(chan runner.Client, len(accsByRunner))
 	for _, accs := range accsByRunner {
 		go func(a []accounts.Classroom) {
 			r := runner.NewLocal()
-			if err := r.Start(url, a); err != nil {
+			if err := r.Start(runID, url, a); err != nil {
 				log.Println("Error occured while starting local runner:", err)
 				rCh <- nil
 			}
@@ -97,12 +93,7 @@ func startRunners(url string, accsByRunner [][]accounts.Classroom) []runner.Clie
 	return runners
 }
 
-func runnersForStep(numClasses int) int {
-	return int(math.Ceil(float64(runner.ClassesPerRunner) / float64(numClasses)))
-}
-
 func (c *localController) cleanup() {
-	c.loadCurve.Stop() // maybe check if stopped already
 	for _, r := range c.activeRunners {
 		if err := r.Stop(); err != nil {
 			log.Println("failed to stop runner", err)
