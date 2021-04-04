@@ -9,7 +9,8 @@
   "author": "Jannik Steinmann",
   "license": "ISC",
   "dependencies": {
-    "playwright-chromium": "^1.9.2"
+    "playwright-chromium": "^1.9.2",
+    "winston": "^3.3.3"
   },
   "devDependencies": {
     "@tsconfig/node14": "^1.0.0",
