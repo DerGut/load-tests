@@ -3,13 +3,14 @@ import { chromium } from "playwright-chromium";
 import LoadRunner from "./runner";
 
 (async () => {
-    const { url, accounts } = parseArgs(process.argv);
+    const { runID, url, accounts } = parseArgs(process.argv);
 
     console.log("Testing", url, "with", accounts.length, "accounts");
+    console.log("runID:", runID);
 
     const browser = await chromium.launch();
 
-    const lr = new LoadRunner(browser, url, accounts);
+    const lr = new LoadRunner(browser, runID, url, accounts);
     process.on("SIGINT", async () => {
         await lr.stop();
         await browser.close()
@@ -19,8 +20,9 @@ import LoadRunner from "./runner";
     console.log("Started all", accounts.length, "users");
 })();
 
-function parseArgs(args: string[]): { url: string, accounts: Classroom[] } {
-    const url = args[2];
-    const accounts = JSON.parse(args[3]);
-    return { url, accounts };
+function parseArgs(args: string[]): { runID: string, url: string, accounts: Classroom[] } {
+    const runID = args[2];
+    const url = args[3];
+    const accounts = JSON.parse(args[4]);
+    return { runID, url, accounts };
 }

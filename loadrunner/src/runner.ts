@@ -9,11 +9,13 @@ import VirtualUser from "./vus/base";
 
 export default class LoadRunner {
     browser: Browser;
+    runID: string;
     url: string;
     accounts: Classroom[];
     vus: VirtualUser[];
-    constructor(browser: Browser, url: string, accounts: Classroom[]) {
+    constructor(browser: Browser, runID: string, url: string, accounts: Classroom[]) {
         this.browser = browser;
+        this.runID = runID;
         this.url = url;
         this.accounts = accounts;
         this.vus = [];
@@ -48,6 +50,7 @@ export default class LoadRunner {
                         thinkTimeFactor: this.drawThinkTimeFactor()
                     });
                     this.vus.push(vu);
+                    vu.run();
                     return vu;
                 });
             });
@@ -58,6 +61,7 @@ export default class LoadRunner {
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
             this.vus.push(vu);
+            vu.run();
             return vu;
         }));
 
@@ -77,6 +81,7 @@ export default class LoadRunner {
                             thinkTimeFactor: this.drawThinkTimeFactor()
                         });
                         this.vus.push(vu);
+                        vu.run();
                         resolve(vu);
                     });
                 });
@@ -91,6 +96,7 @@ export default class LoadRunner {
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
             this.vus.push(vu);
+            vu.run();
             return vu;
         }));
 
