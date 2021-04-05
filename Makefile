@@ -5,7 +5,7 @@ build-controller:
 	go build cmd/main.go
 
 build-runner: install-runner-build-deps
-	loadrunner/node_modules/typescript/bin/tsc --project loadrunner/
+	npm run build --prefix loadrunner/
 
 install-runner-build-deps:
 	npm install --prefix loadrunner/

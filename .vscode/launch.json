@@ -5,12 +5,37 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launch LoadRunner",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/loadrunner",
+            "preLaunchTask": "runner: build",
+            "outFiles": [
+                "${workspaceFolder}/loadrunner/built/**/*.js"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "sourceMaps": true,
+            "program": "${workspaceFolder}/loadrunner/src/main.ts",
+            // "console": "internalConsole",
+            "outputCapture": "std",
+            "args": [
+                "123", // runID
+                "https://beta.pearup.de/", // url
+                "[{\"prepared\":true,\"name\":\"TestKlasse\",\"teacher\":{\"email\":\"teacher-1@load-test.com\",\"password\":\"Passwort123!\"},\"pupils\":[{\"username\":\"pupil1t1\",\"password\":\"Passwort123!\"}]}]" // accounts
+            ],
+            "env": {
+                "PWDEBUG": "1"
+            }
+        },
+        {
             "name": "Launch test function",
             "type": "go",
             "request": "launch",
             "mode": "test",
             "program": "${workspaceFolder}",
-            "args": []
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }

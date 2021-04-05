@@ -1,9 +1,10 @@
 {
     "extends": "@tsconfig/node14/tsconfig.json",
     "compilerOptions": {
-        "outDir": "./built"
+        "outDir": "./built",
+        "sourceMap": true // for debugging
     },
     "include": [
         "./src/**/*"
-    ]
+    ],
 }

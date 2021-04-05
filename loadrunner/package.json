@@ -4,7 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "start": "node built/main.js"
   },
   "author": "Jannik Steinmann",
   "license": "ISC",
