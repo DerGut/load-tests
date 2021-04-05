@@ -1,15 +1,19 @@
 import { BrowserContext } from "playwright-chromium";
+import { Logger } from "winston";
+import newLogger from "../logger";
 
 const NS_PER_SEC = 1e9;
 
 export default class VirtualUser {
+    logger: Logger;
     context: BrowserContext;
     thinkTimeFactor: number;
     timestamp: [number, number] = [0, 0];
     active: boolean = true;
-    constructor(browserContext: BrowserContext, thinkTimeFactor: number) {
+    constructor(browserContext: BrowserContext, id: string, thinkTimeFactor: number) {
         this.context = browserContext;
         this.thinkTimeFactor = thinkTimeFactor;
+        this.logger = newLogger(id);
     }
 
     sessionActive(): boolean {
@@ -19,6 +23,7 @@ export default class VirtualUser {
     async stop() {
         // TODO: wait until run has finished
         this.active = false;
+
     }
 
     async think() {

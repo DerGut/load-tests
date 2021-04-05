@@ -6,8 +6,10 @@ import ClassLog from "./vus/classLog";
 import VirtualPupil from "./vus/pupil";
 import VirtualTeacher from "./vus/teacher";
 import VirtualUser from "./vus/base";
+import newLogger from "./logger";
 
 export default class LoadRunner {
+    logger = newLogger("runner");
     browser: Browser;
     runID: string;
     url: string;
@@ -22,10 +24,10 @@ export default class LoadRunner {
     }
 
     async start(): Promise<VirtualUser[]> {
-        console.log("Starting up")
+        this.logger.info("Starting up")
         const promises: Promise<VirtualUser[]>[] = this.accounts.map(
             async classroom => {
-                console.log("next classroom");
+                this.logger.info("next classroom");
                 if (classroom.prepared) {
                     return this.startPreparedClassroom(classroom);
                 } else {
