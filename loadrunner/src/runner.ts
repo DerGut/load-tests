@@ -99,7 +99,7 @@ export default class LoadRunner {
     }
 
     drawThinkTimeFactor(): number {
-        return 1.5; // TODO: draw random number
+        return Math.random() + 0.5;
     }
 }
 
