@@ -35,6 +35,6 @@ jobs:
         with:
           context: loadrunner/
           tags: |
-            jsteinmann/load-tests/runner:latest
-            jsteinmann/load-tests/runner:${{ github.sha }}
+            jsteinmann/load-tests-runner:latest
+            jsteinmann/load-tests-runner:${{ github.sha }}
           push: true
