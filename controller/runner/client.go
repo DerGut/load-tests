@@ -43,6 +43,11 @@ type RemoteClient struct {
 }
 
 func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
+	accountsJson, err := json.Marshal(a)
+	if err != nil {
+		return err
+	}
+
 	inst, err := rc.provisioner.Provision(runID)
 	if err != nil {
 		return fmt.Errorf("failed to provision instance: %w", err)
@@ -58,7 +63,16 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
 	}
 
-	cmd = BuildDockerRunCmd(runnerImage, []string{"--ipc=host"}, []string{}, []string{})
+	cmd = BuildDockerRunCmd(
+		runnerImage,
+		[]string{"--ipc=host"},
+		[]string{
+			"RUN_ID=" + runID,
+			"URL=" + url,
+			"ACCOUNTS=" + string(accountsJson),
+		},
+		[]string{},
+	)
 	if err = inst.StartProcess(cmd); err != nil {
 		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
 	}
@@ -111,6 +125,9 @@ func (lc *LocalClient) Start(runID, url string, a []accounts.Classroom) error {
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = []string{
+		"NODE_OPTIONS=--max-old-space-size=4096", // v8 heap memory in MB
+	}
 
 	if err := cmd.Start(); err != nil {
 		return err
