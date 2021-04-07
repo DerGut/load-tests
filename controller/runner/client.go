@@ -57,7 +57,6 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 		agentImage,
 		[]string{},
 		[]string{"DD_API_KEY=" + rc.ddApiKey},
-		[]string{},
 	)
 	if err = inst.StartProcess(cmd); err != nil {
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
@@ -71,7 +70,6 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 			"URL=" + url,
 			"ACCOUNTS=" + string(accountsJson),
 		},
-		[]string{},
 	)
 	if err = inst.StartProcess(cmd); err != nil {
 		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
@@ -81,15 +79,14 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 	return nil
 }
 
-func BuildDockerRunCmd(image string, dockerArgs, env, cmdArgs []string) string {
+func BuildDockerRunCmd(image string, dockerArgs, env []string) string {
 	sb := strings.Builder{}
 	sb.WriteString("docker run ")
 	sb.WriteString(strings.Join(dockerArgs, " "))
 	for _, v := range env {
 		sb.WriteString(fmt.Sprintf(" --env %s", v))
 	}
-	sb.WriteString(" " + image + " ")
-	sb.WriteString(strings.Join(cmdArgs, " "))
+	sb.WriteString(" " + image)
 
 	return sb.String()
 }
