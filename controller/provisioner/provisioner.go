@@ -1,7 +1,7 @@
 package provisioner
 
 type Provisioner interface {
-	Provision() (Instance, error)
+	Provision(instanceID string) (Instance, error)
 }
 
 type Instance interface {

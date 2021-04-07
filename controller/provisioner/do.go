@@ -16,16 +16,14 @@ const (
 
 type doProvisioner struct {
 	apiToken    string
-	runID       string
 	region      string
 	dropletSize string
 	sshKeyIDs   []godo.DropletCreateSSHKey
 }
 
-func NewDO(apiToken, runID, region, dropletSize string) Provisioner {
+func NewDO(apiToken, region, dropletSize string) Provisioner {
 	return &doProvisioner{
 		apiToken:    apiToken,
-		runID:       runID,
 		region:      region,
 		dropletSize: dropletSize,
 		sshKeyIDs: []godo.DropletCreateSSHKey{
@@ -35,17 +33,17 @@ func NewDO(apiToken, runID, region, dropletSize string) Provisioner {
 	}
 }
 
-func (dop *doProvisioner) Provision() (Instance, error) {
+func (dop *doProvisioner) Provision(instanceID string) (Instance, error) {
 	client := godo.NewFromToken(dop.apiToken)
 	ds := do.NewDropletsService(client)
 
 	req := godo.DropletCreateRequest{
-		Name:       fmt.Sprintf("do-%s-%s-%s", dop.dropletSize, dop.region, dop.runID),
+		Name:       fmt.Sprintf("do-%s-%s-%s", dop.dropletSize, dop.region, instanceID),
 		Region:     dop.region,
 		Size:       dop.dropletSize,
 		Image:      godo.DropletCreateImage{Slug: "docker-20-04"},
 		SSHKeys:    dop.sshKeyIDs,
-		Tags:       []string{dop.runID},
+		Tags:       []string{instanceID},
 		Monitoring: true,
 	}
 
