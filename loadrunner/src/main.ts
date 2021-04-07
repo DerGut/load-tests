@@ -22,8 +22,21 @@ import LoadRunner from "./runner";
 })();
 
 function parseArgs(args: string[]): { runID: string, url: string, accounts: Classroom[] } {
+    if (args.length < 4) {
+        rootLogger.error("Not enough arguments provided");
+        process.exit(1);
+    }
     const runID = args[2];
     const url = args[3];
-    const accounts = JSON.parse(args[4]);
-    return { runID, url, accounts };
+    try {
+        const accounts = JSON.parse(args[4]);
+        return { runID, url, accounts };
+    } catch (e) {
+        if (e instanceof SyntaxError) {
+            rootLogger.error("Error parsing accounts");
+            process.exit(1);
+        }
+        throw e;
+    }
+
 }

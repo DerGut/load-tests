@@ -45,9 +45,11 @@ export default class LoadRunner {
                         pageUrl: this.url,
                         thinkTimeFactor: this.drawThinkTimeFactor()
                     });
+                    console.time(vu.id);
                     vu.run().catch(e => {
                         this.logger.error(`Caught exception: ${e}`);
                         this.logger.error(e);
+                        console.timeEnd(vu.id);
                     });
                     return vu;
                 });
