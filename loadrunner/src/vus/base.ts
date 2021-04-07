@@ -2,17 +2,17 @@ import { BrowserContext } from "playwright-chromium";
 import { Logger } from "winston";
 import newLogger from "../logger";
 
-const NS_PER_SEC = 1e9;
-
 export default class VirtualUser {
     logger: Logger;
     context: BrowserContext;
     thinkTimeFactor: number;
     timestamp: [number, number] = [0, 0];
     active: boolean = true;
+    id: string;
     constructor(browserContext: BrowserContext, id: string, thinkTimeFactor: number) {
         this.context = browserContext;
         this.thinkTimeFactor = thinkTimeFactor;
+        this.id = id;
         this.logger = newLogger(id);
     }
 
@@ -32,16 +32,9 @@ export default class VirtualUser {
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 
-    timeStart() {
-        this.timestamp = process.hrtime();
+    async time(label: string, fn: Function) {
+        console.time(`${this.id}:${label}`);
+        await fn();
+        console.timeEnd(`${this.id}:${label}`);
     }
-
-    timeEnd() {
-        const diff = process.hrtime(this.timestamp);
-        return formatHrtime(diff);
-    }
-}
-
-function formatHrtime(time: [number, number]): string {
-    return `${time[0] + time[1] / NS_PER_SEC}`;
 }

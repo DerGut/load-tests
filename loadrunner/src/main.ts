@@ -9,12 +9,11 @@ import LoadRunner from "./runner";
     rootLogger.info(`Testing ${url} with ${accounts.length} accounts`);
     rootLogger.info(`runID: ${runID}`);
 
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({ headless: true, slowMo: 200 });
 
     const lr = new LoadRunner(browser, runID, url, accounts);
     process.on("SIGINT", async () => {
         rootLogger.info("Received SIGINT");
-        await lr.stop();
         await browser.close()
     });
 
