@@ -18,16 +18,12 @@
             ],
             "sourceMaps": true,
             "program": "${workspaceFolder}/loadrunner/src/main.ts",
-            // "console": "internalConsole",
             "outputCapture": "std",
             "args": [
                 "123", // runID
                 "https://beta.pearup.de/", // url
                 "[{\"prepared\":true,\"name\":\"TestKlasse\",\"teacher\":{\"email\":\"teacher-1@load-test.com\",\"password\":\"Passwort123!\"},\"pupils\":[{\"username\":\"pupil1t1\",\"password\":\"Passwort123!\"}]}]" // accounts
-            ],
-            "env": {
-                "PWDEBUG": "1"
-            }
+            ]
         },
         {
             "name": "Launch test function",
