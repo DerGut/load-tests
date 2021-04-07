@@ -18,15 +18,29 @@ type RunConfig struct {
 	Accounts  []accounts.Classroom
 }
 
-type localController struct {
+type RunnerFunc func() runner.Client
+type controller struct {
+	RunnerFunc
 	activeRunners []runner.Client
 }
 
 func NewLocal() Controller {
-	return &localController{}
+	return &controller{
+		RunnerFunc: func() runner.Client {
+			return runner.NewLocal()
+		},
+	}
 }
 
-func (c *localController) Run(ctx context.Context, cfg RunConfig) error {
+func NewRemote(doApiToken, ddApiKey, region, size string) Controller {
+	return &controller{
+		RunnerFunc: func() runner.Client {
+			return runner.NewRemote(doApiToken, ddApiKey, region, size)
+		},
+	}
+}
+
+func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 	cfg.LoadCurve.Start()
 	accountIdx := 0
 
@@ -47,11 +61,11 @@ func (c *localController) Run(ctx context.Context, cfg RunConfig) error {
 	}
 }
 
-func (c *localController) nextStep(runID string, url string, accs []accounts.Classroom) {
+func (c *controller) nextStep(runID string, url string, accs []accounts.Classroom) {
 	accsByRunner := batchAccounts(accs)
 
 	log.Println("Starting", len(accsByRunner), "runners with", len(accs), "classes in total")
-	runners := startRunners(runID, url, accsByRunner)
+	runners := c.startRunners(runID, url, accsByRunner)
 	c.activeRunners = append(c.activeRunners, runners...)
 }
 
@@ -69,11 +83,11 @@ func batchAccounts(accs []accounts.Classroom) [][]accounts.Classroom {
 	return batches
 }
 
-func startRunners(runID, url string, accsByRunner [][]accounts.Classroom) []runner.Client {
+func (c *controller) startRunners(runID, url string, accsByRunner [][]accounts.Classroom) []runner.Client {
 	rCh := make(chan runner.Client, len(accsByRunner))
 	for _, accs := range accsByRunner {
 		go func(a []accounts.Classroom) {
-			r := runner.NewLocal()
+			r := c.RunnerFunc()
 			if err := r.Start(runID, url, a); err != nil {
 				log.Println("Error occured while starting local runner:", err)
 				rCh <- nil
@@ -93,7 +107,7 @@ func startRunners(runID, url string, accsByRunner [][]accounts.Classroom) []runn
 	return runners
 }
 
-func (c *localController) cleanup() {
+func (c *controller) cleanup() {
 	for _, r := range c.activeRunners {
 		if err := r.Stop(); err != nil {
 			log.Println("failed to stop runner", err)
