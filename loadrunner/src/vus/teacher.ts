@@ -6,7 +6,7 @@ export default class VirtualTeacher extends VirtualUser {
     account: Teacher;
     config: Config;
     constructor(context: BrowserContext, account: Teacher, config: Config) {
-        super(context, config.thinkTimeFactor);
+        super(context, account.email, config.thinkTimeFactor);
         this.account = account;
         this.config = config;
     }
