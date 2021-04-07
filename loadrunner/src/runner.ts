@@ -14,13 +14,11 @@ export default class LoadRunner {
     runID: string;
     url: string;
     accounts: Classroom[];
-    vus: VirtualUser[];
     constructor(browser: Browser, runID: string, url: string, accounts: Classroom[]) {
         this.browser = browser;
         this.runID = runID;
         this.url = url;
         this.accounts = accounts;
-        this.vus = [];
     }
 
     async start(): Promise<VirtualUser[]> {
@@ -38,10 +36,6 @@ export default class LoadRunner {
         return Promise.all(promises).then(all => all.flat());
     }
 
-    async stop() {
-        return Promise.all(this.vus.map(vu => vu.stop()));
-    }
-
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
         const promises: Promise<VirtualUser>[] = classroom.pupils.map(
             async pupil => {
@@ -51,8 +45,10 @@ export default class LoadRunner {
                         pageUrl: this.url,
                         thinkTimeFactor: this.drawThinkTimeFactor()
                     });
-                    this.vus.push(vu);
-                    vu.run();
+                    vu.run().catch(e => {
+                        this.logger.error(`Caught exception: ${e}`);
+                        this.logger.error(e);
+                    });
                     return vu;
                 });
             });
@@ -62,7 +58,6 @@ export default class LoadRunner {
                 pageUrl: this.url,
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
-            this.vus.push(vu);
             vu.run();
             return vu;
         }));
@@ -82,7 +77,6 @@ export default class LoadRunner {
                             joinCode,
                             thinkTimeFactor: this.drawThinkTimeFactor()
                         });
-                        this.vus.push(vu);
                         vu.run();
                         resolve(vu);
                     });
@@ -97,7 +91,6 @@ export default class LoadRunner {
                 classSize: classroom.pupils.length,
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
-            this.vus.push(vu);
             vu.run();
             return vu;
         }));
