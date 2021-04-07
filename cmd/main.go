@@ -23,6 +23,10 @@ var (
 	classSize       int
 	preparedPortion float64
 	remote          bool
+	doApiKey        string
+	ddApiKey        string
+	doRegion        string
+	doSize          string
 )
 
 func init() {
@@ -34,6 +38,10 @@ func init() {
 	flag.IntVar(&classSize, "classSize", 30, "The number of pupils within a class.")
 	flag.Float64Var(&preparedPortion, "preparedPortion", 0.3, "The portion of classes for which accounts should be created beforehand.")
 	flag.BoolVar(&remote, "remote", true, "Whether to provision remote machines to run the tests. If false, they will be run locally.")
+	flag.StringVar(&doApiKey, "doApiKey", "", "The API key for digital ocean.")
+	flag.StringVar(&ddApiKey, "ddApiKey", "", "The API key for datadog.")
+	flag.StringVar(&doRegion, "doRegion", "fra1", "The region to provision the runner instances in.")
+	flag.StringVar(&doSize, "doSize", "m-2vcpu-16gb", "The size of the runner instances to provision.")
 	flag.Parse()
 }
 
@@ -48,7 +56,7 @@ func main() {
 
 	var c controller.Controller
 	if remote {
-		log.Fatalln("No remote runner implemented yet")
+		c = controller.NewRemote(doApiKey, ddApiKey, doRegion, doSize)
 	} else {
 		c = controller.NewLocal()
 	}
