@@ -7,4 +7,5 @@ type Provisioner interface {
 type Instance interface {
 	StartProcess(cmd string) error
 	Destroy() error
+	String() string
 }

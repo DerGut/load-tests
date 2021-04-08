@@ -80,6 +80,10 @@ func (doi *doInstance) Destroy() error {
 	return ds.Delete(doi.droplet.ID)
 }
 
+func (doi *doInstance) String() string {
+	return doi.droplet.Name
+}
+
 func sshStart(cmd string, addr string) error {
 	c := ssh.NewClient(defaultUser, addr)
 	s, err := c.Session()
