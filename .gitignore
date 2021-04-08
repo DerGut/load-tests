@@ -3,4 +3,5 @@ loadrunner/built/
 loadrunner/node_modules/
 
 .env
+config-remote.json
 main

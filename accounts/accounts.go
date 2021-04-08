@@ -23,10 +23,10 @@ const (
 
 var ErrDumpTooSmall = errors.New("not enough accounts in dump")
 
-func Generate(classConcurrency, classSize int, preparedPortion float32) error {
+func Generate(classConcurrency, classSize int, preparedPortion float64) error {
 	accounts := make([]Classroom, classConcurrency)
 	for i := 0; i < classConcurrency; i++ {
-		prepare := i < int(float32(classConcurrency)*preparedPortion)
+		prepare := i < int(float64(classConcurrency)*preparedPortion)
 		accounts[i] = buildClassroom(classSize, i, prepare)
 	}
 

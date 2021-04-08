@@ -2,7 +2,7 @@ run-local: build-controller build-runner
 	./main --dbUri=${MONGO_URI} --loadLevels=1 --stepSize=15m --classSize=5 --preparedPortion=0.3 --remote=false
 
 run-remote: build-controller
-	./main --dbUri=${MONGO_URI} --loadLevels=10 --stepSize=15m --classSize=1 --preparedPortion=0.3 --remote=true --doApiKey=${DO_API_KEY} --ddApiKey=${DD_API_KEY}
+	./main --config config-remote.json
 
 build-controller:
 	go build cmd/main.go

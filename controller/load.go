@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -11,12 +12,12 @@ import (
 
 type LoadCurve struct {
 	LoadLevels
-	StepSize time.Duration
-	C        chan int
-	done     chan struct{}
+	StepSize
+	C    chan int
+	done chan struct{}
 }
 
-func NewLoadCurve(levels LoadLevels, stepSize time.Duration) *LoadCurve {
+func NewLoadCurve(levels LoadLevels, stepSize StepSize) *LoadCurve {
 	return &LoadCurve{
 		levels,
 		stepSize,
@@ -26,12 +27,15 @@ func NewLoadCurve(levels LoadLevels, stepSize time.Duration) *LoadCurve {
 }
 
 type LoadLevels []int
+type StepSize struct {
+	time.Duration
+}
 
 func (lc LoadCurve) Start() {
 	go func() {
 		lc.C <- lc.LoadLevels[0]
-		log.Println("Waiting for ", lc.StepSize, " until next increment")
-		t := time.NewTicker(lc.StepSize)
+		log.Println("Waiting for", lc.StepSize, "until next increment")
+		t := time.NewTicker(lc.StepSize.Duration)
 		for i := 1; i <= len(lc.LoadLevels); i++ {
 			select {
 			case <-t.C:
@@ -71,4 +75,23 @@ func (ll *LoadLevels) Set(flag string) error {
 
 func (ll *LoadLevels) String() string {
 	return fmt.Sprint(*ll)
+}
+
+func (ss *StepSize) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ss.String())
+}
+
+func (ss *StepSize) UnmarshalJSON(b []byte) error {
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	ss.Duration = d
+	return nil
 }
