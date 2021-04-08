@@ -23,6 +23,8 @@ const (
 	runnerImage = "jsteinmann/load-test:latest"
 )
 
+var runnerCounter = 0
+
 type Client interface {
 	Start(runID, url string, accounts []accounts.Classroom) error
 	Stop() error
@@ -48,7 +50,9 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 		return err
 	}
 
-	inst, err := rc.provisioner.Provision(runID)
+	runnerCounter += 1
+	instID := fmt.Sprintf("%s-%d", runID, runnerCounter)
+	inst, err := rc.provisioner.Provision(instID)
 	if err != nil {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
