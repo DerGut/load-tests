@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"fmt"
 	"net"
 	"os"
 
@@ -13,17 +14,21 @@ type Client struct {
 	config *ssh.ClientConfig
 }
 
-func NewClient(username string, addr string) *Client {
+func NewClient(username string, addr string) (*Client, error) {
+	auth, err := sshAgent()
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
 		addr: addr,
 		config: &ssh.ClientConfig{
 			User: username,
 			Auth: []ssh.AuthMethod{
-				sshAgent(),
+				auth,
 			},
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		},
-	}
+	}, nil
 }
 
 type Session struct {
@@ -43,9 +48,14 @@ func (c *Client) Session() (*Session, error) {
 	return &Session{Session: session}, nil
 }
 
-func sshAgent() ssh.AuthMethod {
-	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-		return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
+func sshAgent() (ssh.AuthMethod, error) {
+	sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial SSH_AUTH_SOCKET %w", err)
 	}
-	return nil
+
+	c := agent.NewClient(sshAgent)
+	auth := ssh.PublicKeysCallback(c.Signers)
+
+	return auth, nil
 }
