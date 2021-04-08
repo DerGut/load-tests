@@ -7,6 +7,7 @@ package runner
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -19,8 +20,8 @@ const (
 	// ClassesPerRunner is the number of classes a single runner can manage simultaneously
 	ClassesPerRunner = 10
 
-	agentImage  = "datadog/dogstatsd:latest"
-	runnerImage = "jsteinmann/load-test:latest"
+	agentImage  = "datadog/agent:latest"
+	runnerImage = "jsteinmann/load-tests-runner:latest"
 )
 
 var runnerCounter = 0
@@ -62,6 +63,7 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 		[]string{},
 		[]string{"DD_API_KEY=" + rc.ddApiKey},
 	)
+	log.Println("Deploying agent")
 	if err = inst.StartProcess(cmd); err != nil {
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
 	}
@@ -75,6 +77,7 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 			"ACCOUNTS=" + string(accountsJson),
 		},
 	)
+	log.Println("Deploying runner")
 	if err = inst.StartProcess(cmd); err != nil {
 		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
 	}
