@@ -43,19 +43,19 @@ func NewRemote(doApiToken, ddApiKey, region, size string) Controller {
 func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 	cfg.LoadCurve.Start()
 	accountIdx := 0
+	defer c.cleanup()
 
 	for {
 		select {
 		case load, more := <-cfg.LoadCurve.C:
 			if !more {
-				c.cleanup()
+				log.Println("Test is over, cleaning up")
 				return nil
 			}
 			c.nextStep(cfg.RunID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+load])
 			accountIdx += load
 		case <-ctx.Done():
 			cfg.LoadCurve.Stop()
-			c.cleanup()
 			return ctx.Err()
 		}
 	}
