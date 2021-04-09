@@ -1,7 +1,9 @@
 package provisioner
 
+import "context"
+
 type Provisioner interface {
-	Provision(instanceID string) (Instance, error)
+	Provision(ctx context.Context, instanceID string) (Instance, error)
 }
 
 type Instance interface {

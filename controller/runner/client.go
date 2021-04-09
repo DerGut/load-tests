@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -26,7 +27,7 @@ const (
 var runnerCounter = 0
 
 type Client interface {
-	Start(runID, url string, accounts []accounts.Classroom) error
+	Start(ctx context.Context, runID, url string, accounts []accounts.Classroom) error
 	Stop() error
 }
 
@@ -44,7 +45,7 @@ type RemoteClient struct {
 	ddApiKey    string
 }
 
-func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
+func (rc *RemoteClient) Start(ctx context.Context, runID, url string, a []accounts.Classroom) error {
 	accountsJson, err := json.Marshal(a)
 	if err != nil {
 		return err
@@ -52,7 +53,7 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 
 	runnerCounter += 1
 	instID := fmt.Sprintf("%s-%d", runID, runnerCounter)
-	inst, err := rc.provisioner.Provision(instID)
+	inst, err := rc.provisioner.Provision(ctx, instID)
 	if err != nil {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
@@ -94,9 +95,10 @@ func runnerCmd(runID, url, accounts string) string {
 	return fmt.Sprintf(`docker run \
 	--detach \
 	--ipc=host \
+	--env PRODUCTION=true \
 	--env RUN_ID=%s \
 	--env URL=%s \
-	--env "ACCOUNTS=%s" \
+	--env 'ACCOUNTS=%s' \
 	%s`, runID, url, accounts, runnerImage)
 }
 
@@ -116,7 +118,7 @@ type LocalClient struct {
 	proc *os.Process
 }
 
-func (lc *LocalClient) Start(runID, url string, a []accounts.Classroom) error {
+func (lc *LocalClient) Start(_ctx context.Context, runID, url string, a []accounts.Classroom) error {
 	accountsJson, err := json.Marshal(a)
 	if err != nil {
 		return err

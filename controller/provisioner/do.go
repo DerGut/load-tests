@@ -1,6 +1,7 @@
 package provisioner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -36,7 +37,7 @@ func NewDO(apiToken, region, dropletSize string) Provisioner {
 	}
 }
 
-func (dop *doProvisioner) Provision(instanceID string) (Instance, error) {
+func (dop *doProvisioner) Provision(ctx context.Context, instanceID string) (Instance, error) {
 	client := godo.NewFromToken(dop.apiToken)
 	ds := do.NewDropletsService(client)
 
@@ -52,13 +53,14 @@ func (dop *doProvisioner) Provision(instanceID string) (Instance, error) {
 
 	log.Println("Creating", req.Name)
 
+	// TODO: maybe use godo create function that takes a context
 	d, err := ds.Create(&req, true)
 	if err != nil {
 		return nil, err
 	}
 
 	inst := &doInstance{apiToken: dop.apiToken, droplet: d}
-	if err = blockTillReady(inst); err != nil {
+	if err = blockTillReady(ctx, inst); err != nil {
 		return nil, err
 	}
 
@@ -114,14 +116,18 @@ const (
 )
 
 // blockTillReady checks the instance for readiness with exponential backoff.
-func blockTillReady(inst *doInstance) error {
+func blockTillReady(ctx context.Context, inst *doInstance) error {
 	time.Sleep(5 * time.Second)
 	for i := 0.0; i < maxTries; i++ {
 		if inst.isReady() {
 			return nil
 		}
 		backoff := time.Duration(math.Pow(2.0, i))
-		time.Sleep(backoff * backoffModifier) // 1s to 512s
+		select {
+		case <-time.After(backoff * backoffModifier): // 1s to 512s
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 	return errors.New("not ready after configured timeout")
 }
