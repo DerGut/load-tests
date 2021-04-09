@@ -64,7 +64,7 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 			return ctx.Err()
 		}
 	}
-	log.Println("Test is over, cleaning up")
+	log.Println("Test is over")
 	return nil
 }
 
@@ -96,7 +96,7 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 		go func(a []accounts.Classroom) {
 			r := c.RunnerFunc()
 			if err := r.Start(ctx, runID, url, a); err != nil {
-				log.Println("Error occured while starting local runner:", err)
+				log.Println("Error occured while starting runner:", err)
 				rCh <- nil
 			}
 			rCh <- r
@@ -115,6 +115,7 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 }
 
 func (c *controller) cleanup() {
+	log.Println("Cleaning up")
 	for _, r := range c.activeRunners {
 		if err := r.Stop(); err != nil {
 			log.Println("failed to stop runner", err)
