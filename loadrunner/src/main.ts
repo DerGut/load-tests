@@ -12,7 +12,11 @@ import LoadRunner from "./runner";
 
     statsd.gauge("test", 2);
 
-    const browser = await chromium.launch({ headless: true, slowMo: 200 });
+    const browser = await chromium.launch({ 
+        headless: true, 
+        slowMo: 200,
+        args: ["--disable-dev-shm-usage"]
+    });
 
     const lr = new LoadRunner(browser, runID, url, accounts);
     process.on("SIGINT", async () => {
