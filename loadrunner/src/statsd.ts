@@ -1,4 +1,4 @@
-import StatsD from "hot-shots";
+import StatsD, { Tags } from "hot-shots";
 import newLogger from "./logger";
 
 const statsdLogger = newLogger("statsd");
@@ -7,7 +7,7 @@ export default new StatsD({
     prefix: "load-tests.",
     globalTags: {
         "runId": process.env.RUN_ID
-    },
+    } as Tags,
     errorHandler: function name(error) {
         statsdLogger.warn(error);
     }
