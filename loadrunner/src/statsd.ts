@@ -1,9 +1,15 @@
 import StatsD from "hot-shots";
+import newLogger from "./logger";
+
+const statsdLogger = newLogger("statsd");
 
 export default new StatsD({
     prefix: "load-tests.",
     globalTags: {
         "runId": process.env.RUN_ID
+    },
+    errorHandler: function name(error) {
+        statsdLogger.warn(error);
     }
 });
 
