@@ -28,7 +28,8 @@ export default class VirtualUser {
 
     async think() {
         // const thinkTime = drawFromThinkTimeDistribution() * this.thinkTimeFactor;
-        const thinkTime = 1500;
+        const rand = Math.random() + 0.5;
+        const thinkTime = rand * this.thinkTimeFactor * 10 * 1000;
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 

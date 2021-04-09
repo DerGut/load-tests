@@ -21,7 +21,9 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async run(): Promise<void> {
+        await this.think();
         const page = await this.context.newPage();
+        await this.think();
         await this.think();
         await page.goto(this.config.pageUrl);
         await this.think();
@@ -85,7 +87,7 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async workExercise(page: Page) {
-        await this.thinkLong();
+        await this.think();
 
         const rand = Math.random();
         console.log("random number: ", rand);
@@ -120,10 +122,6 @@ export default class VirtualPupil extends VirtualUser {
             await page.click("text='Frage stellen!'");
             await page.click("text=minimieren"); // TODO: notwendig?
         }
-    }
-
-    async thinkLong() {
-        return new Promise(resolve => setTimeout(resolve, 1 * 1000));
     }
 }
 
