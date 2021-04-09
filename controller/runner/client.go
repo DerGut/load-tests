@@ -57,14 +57,14 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
 
-	log.Println("Deploying agent")
+	log.Println("Deploying agent to", inst)
 	cmd := agentCmd(rc.ddApiKey)
 	if err = inst.RunCmd(cmd); err != nil {
 		inst.Destroy()
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
 	}
 
-	log.Println("Deploying runner")
+	log.Println("Deploying runner to", inst)
 	cmd = runnerCmd(runID, url, string(accountsJson))
 	if err = inst.RunCmd(cmd); err != nil {
 		inst.Destroy()
@@ -72,6 +72,9 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 	}
 
 	rc.instance = inst
+
+	log.Println(inst, "ready")
+
 	return nil
 }
 
