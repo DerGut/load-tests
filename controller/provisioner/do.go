@@ -70,13 +70,13 @@ type doInstance struct {
 	droplet  *do.Droplet
 }
 
-func (doi *doInstance) StartProcess(cmd string) error {
+func (doi *doInstance) RunCmd(cmd string) error {
 	addr, err := doi.droplet.PublicIPv4()
 	if err != nil {
 		return err
 	}
 
-	return sshStart(cmd, addr)
+	return sshRun(cmd, addr)
 }
 
 func (doi *doInstance) Destroy() error {
