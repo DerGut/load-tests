@@ -95,6 +95,7 @@ func runnerCmd(runID, url, accounts string) string {
 	return fmt.Sprintf(`docker run \
 	--detach \
 	--ipc=host \
+	--env NODE_OPTIONS=--max-old-space-size=4096 \
 	--env PRODUCTION=true \
 	--env RUN_ID=%s \
 	--env URL=%s \
