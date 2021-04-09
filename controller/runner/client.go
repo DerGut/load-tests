@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/DerGut/load-tests/accounts"
 	"github.com/DerGut/load-tests/controller/provisioner"
@@ -58,27 +57,17 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
 
-	cmd := BuildDockerRunCmd(
-		agentImage,
-		[]string{},
-		[]string{"DD_API_KEY=" + rc.ddApiKey},
-	)
 	log.Println("Deploying agent")
-	if err = inst.StartProcess(cmd); err != nil {
+	cmd := agentCmd(rc.ddApiKey)
+	if err = inst.RunCmd(cmd); err != nil {
+		inst.Destroy()
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
 	}
 
-	cmd = BuildDockerRunCmd(
-		runnerImage,
-		[]string{"--ipc=host"},
-		[]string{
-			"RUN_ID=" + runID,
-			"URL=" + url,
-			"ACCOUNTS=" + string(accountsJson),
-		},
-	)
 	log.Println("Deploying runner")
-	if err = inst.StartProcess(cmd); err != nil {
+	cmd = runnerCmd(runID, url, string(accountsJson))
+	if err = inst.RunCmd(cmd); err != nil {
+		inst.Destroy()
 		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
 	}
 
@@ -86,16 +75,26 @@ func (rc *RemoteClient) Start(runID, url string, a []accounts.Classroom) error {
 	return nil
 }
 
-func BuildDockerRunCmd(image string, dockerArgs, env []string) string {
-	sb := strings.Builder{}
-	sb.WriteString("docker run ")
-	sb.WriteString(strings.Join(dockerArgs, " "))
-	for _, v := range env {
-		sb.WriteString(fmt.Sprintf(" --env %s", v))
-	}
-	sb.WriteString(" " + image)
+func agentCmd(ddApiKey string) string {
+	return fmt.Sprintf(`docker run \
+	--detach \
+	-v /var/run/docker.sock:/var/run/docker.sock:ro \
+	-v /proc/:/host/proc/:ro \
+	-v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+	-p 8125:8125/udp \
+	--env DD_API_KEY=%s \
+	--env DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true \
+	%s`, ddApiKey, agentImage)
+}
 
-	return sb.String()
+func runnerCmd(runID, url, accounts string) string {
+	return fmt.Sprintf(`docker run \
+	--detach \
+	--ipc=host \
+	--env RUN_ID=%s \
+	--env URL=%s \
+	--env "ACCOUNTS=%s" \
+	%s`, runID, url, accounts, runnerImage)
 }
 
 func (rc *RemoteClient) Stop() error {
