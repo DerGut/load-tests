@@ -45,7 +45,7 @@ function parseArgs(args: string[]): { runID: string, url: string, accounts: Clas
         return { runID, url, accounts: JSON.parse(accounts) };
     } catch (e) {
         if (e instanceof SyntaxError) {
-            rootLogger.error("Error parsing accounts");
+            rootLogger.error("Error parsing accounts", e);
             process.exit(1);
         }
         throw e;
