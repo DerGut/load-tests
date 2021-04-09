@@ -14,6 +14,10 @@ import (
 	"github.com/DerGut/load-tests/controller"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func main() {
 	conf := config.Parse()
 
@@ -71,6 +75,7 @@ const (
 	runIDLen = 6
 )
 
+// runID generates a random 6 character long alpha-numeric string ID
 func runID() string {
 	b := make([]byte, runIDLen)
 	for i := range b {
