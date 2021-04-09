@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/DerGut/load-tests/controller"
@@ -133,25 +132,14 @@ func parseConfigFile(path string) *Config {
 func parseEnvVars() *Config {
 	c := &Config{}
 
-	for _, s := range os.Environ() {
-		split := strings.SplitN(s, "=", 2)
-		if len(split) != 2 {
-			continue
-		}
-
-		name := split[0]
-		value := split[1]
-
-		switch name {
-		case "DB_URI":
-			c.DbUri = value
-		case "DO_API_KEY":
-			c.DoApiKey = value
-		case "DD_API_KEY":
-			c.DdApiKey = value
-		default:
-			continue
-		}
+	if dbUri, ok := os.LookupEnv("DB_URI"); ok {
+		c.DbUri = dbUri
+	}
+	if doApiKey, ok := os.LookupEnv("DO_API_KEY"); ok {
+		c.DoApiKey = doApiKey
+	}
+	if ddApiKey, ok := os.LookupEnv("DD_API_KEY"); ok {
+		c.DdApiKey = ddApiKey
 	}
 
 	return c
