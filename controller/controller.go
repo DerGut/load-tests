@@ -71,7 +71,7 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 func (c *controller) nextStep(ctx context.Context, runID string, url string, accs []accounts.Classroom) {
 	accsByRunner := batchAccounts(accs)
 
-	log.Println("Starting", len(accsByRunner), "runners with", len(accs), "classes in total")
+	log.Println("Starting", len(accsByRunner), "runner(s) with", len(accs), "classes in total")
 	runners := c.startRunners(ctx, runID, url, accsByRunner)
 	c.activeRunners = append(c.activeRunners, runners...)
 }
