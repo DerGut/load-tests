@@ -61,11 +61,11 @@ func setupAccounts(conf *config.Config) []accounts.Classroom {
 }
 
 func parseRunConfig(conf *config.Config, accounts []accounts.Classroom) controller.RunConfig {
-	lc := controller.NewLoadCurve(conf.LoadLevels, conf.StepSize)
+	lc := controller.LoadCurve{LoadLevels: conf.LoadLevels, StepSize: conf.StepSize}
 	return controller.RunConfig{
 		RunID:     runID(),
 		Url:       conf.Url,
-		LoadCurve: lc,
+		LoadCurve: &lc,
 		Accounts:  accounts,
 	}
 }

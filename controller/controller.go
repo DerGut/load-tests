@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/DerGut/load-tests/accounts"
 	"github.com/DerGut/load-tests/controller/runner"
@@ -41,31 +42,37 @@ func NewRemote(doApiToken, ddApiKey, region, size string) Controller {
 }
 
 func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
-	cfg.LoadCurve.Start()
 	accountIdx := 0
 	defer c.cleanup()
 
-	for {
+	currentLoad := 0
+	for _, load := range cfg.LoadCurve.LoadLevels {
+		log.Println("Next step with", load, "running classes")
+		toAdd := load - currentLoad
+		if toAdd < 0 {
+			panic("No Load decrease implemented yet")
+		}
+		if toAdd > 0 {
+			c.nextStep(ctx, cfg.RunID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+toAdd])
+			accountIdx += toAdd
+		}
+		currentLoad = load
+
 		select {
-		case load, more := <-cfg.LoadCurve.C:
-			if !more {
-				log.Println("Test is over, cleaning up")
-				return nil
-			}
-			c.nextStep(cfg.RunID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+load])
-			accountIdx += load
+		case <-time.After(cfg.LoadCurve.StepSize.Duration):
 		case <-ctx.Done():
-			cfg.LoadCurve.Stop()
 			return ctx.Err()
 		}
 	}
+	log.Println("Test is over, cleaning up")
+	return nil
 }
 
-func (c *controller) nextStep(runID string, url string, accs []accounts.Classroom) {
+func (c *controller) nextStep(ctx context.Context, runID string, url string, accs []accounts.Classroom) {
 	accsByRunner := batchAccounts(accs)
 
 	log.Println("Starting", len(accsByRunner), "runners with", len(accs), "classes in total")
-	runners := c.startRunners(runID, url, accsByRunner)
+	runners := c.startRunners(ctx, runID, url, accsByRunner)
 	c.activeRunners = append(c.activeRunners, runners...)
 }
 
@@ -83,12 +90,12 @@ func batchAccounts(accs []accounts.Classroom) [][]accounts.Classroom {
 	return batches
 }
 
-func (c *controller) startRunners(runID, url string, accsByRunner [][]accounts.Classroom) []runner.Client {
+func (c *controller) startRunners(ctx context.Context, runID, url string, accsByRunner [][]accounts.Classroom) []runner.Client {
 	rCh := make(chan runner.Client, len(accsByRunner))
 	for _, accs := range accsByRunner {
 		go func(a []accounts.Classroom) {
 			r := c.RunnerFunc()
-			if err := r.Start(runID, url, a); err != nil {
+			if err := r.Start(ctx, runID, url, a); err != nil {
 				log.Println("Error occured while starting local runner:", err)
 				rCh <- nil
 			}
