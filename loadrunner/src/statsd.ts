@@ -1,6 +1,7 @@
 import StatsD from "hot-shots";
 
 export default new StatsD({
+    prefix: "load-tests.",
     globalTags: {
         "runId": process.env.RUN_ID
     }

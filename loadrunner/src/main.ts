@@ -10,6 +10,8 @@ import LoadRunner from "./runner";
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
     rootLogger.info(`runID: ${runID}`);
 
+    statsd.gauge("test", 2);
+
     const browser = await chromium.launch({ headless: true, slowMo: 200 });
 
     const lr = new LoadRunner(browser, runID, url, accounts);
