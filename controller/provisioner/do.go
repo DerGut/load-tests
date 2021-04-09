@@ -143,10 +143,12 @@ func sshRun(cmd string, addr string) <-chan error {
 		s, err := sshSession(addr)
 		if err != nil {
 			c <- err
+			return
 		}
 
 		if err := s.Run(cmd); err != nil {
 			c <- fmt.Errorf("can't run cmd: %w", err)
+			return
 		}
 		c <- nil
 	}()
