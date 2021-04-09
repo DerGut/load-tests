@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/DerGut/load-tests/accounts"
 	"github.com/DerGut/load-tests/controller/provisioner"
@@ -58,12 +59,20 @@ func (rc *RemoteClient) Start(ctx context.Context, runID, url string, a []accoun
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
 
+	if err = inst.RunCmd(ctx, "docker network create load-tests"); err != nil {
+		inst.Destroy()
+		return fmt.Errorf("failed to create docker network on host %s: %w", inst, err)
+	}
+
 	log.Println("Deploying agent to", inst)
 	cmd := agentCmd(rc.ddApiKey)
 	if err = inst.RunCmd(ctx, cmd); err != nil {
 		inst.Destroy()
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
 	}
+
+	// Let agent start up first to catch all metrics
+	time.Sleep(1 * time.Minute)
 
 	log.Println("Deploying runner to", inst)
 	cmd = runnerCmd(runID, url, string(accountsJson))
@@ -83,18 +92,20 @@ func agentCmd(ddApiKey string) string {
 	return fmt.Sprintf(`docker run \
 	--detach \
 	--name dd-agent \
+	--network load-tests \
 	-v /var/run/docker.sock:/var/run/docker.sock:ro \
 	-v /proc/:/host/proc/:ro \
 	-v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
 	-p 8125:8125/udp \
 	--env DD_API_KEY=%s \
-	--env DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true \
+	--env DD_DOGSTATSD_NON_LOCAL_TRAFFIC="true" \
 	%s`, ddApiKey, agentImage)
 }
 
 func runnerCmd(runID, url, accounts string) string {
 	return fmt.Sprintf(`docker run \
 	--detach \
+	--network load-tests \
 	--ipc=host \
 	--env NODE_OPTIONS=--max-old-space-size=8192 \
 	--env PRODUCTION=true \
