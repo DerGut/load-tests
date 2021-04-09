@@ -1,3 +1,5 @@
+import "dd-trace/init";
+
 import { chromium } from "playwright-chromium";
 
 import { root as rootLogger } from "./logger";
@@ -15,7 +17,10 @@ import LoadRunner from "./runner";
     const browser = await chromium.launch({ 
         headless: true, 
         slowMo: 200,
-        args: ["--disable-dev-shm-usage"]
+        args: [
+            "--disable-dev-shm-usage", 
+            "--full-memory-crash-report"
+        ]
     });
 
     const lr = new LoadRunner(browser, runID, url, accounts);
