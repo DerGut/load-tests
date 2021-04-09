@@ -72,13 +72,18 @@ type doInstance struct {
 	droplet  *do.Droplet
 }
 
-func (doi *doInstance) RunCmd(cmd string) error {
+func (doi *doInstance) RunCmd(ctx context.Context, cmd string) error {
 	addr, err := doi.droplet.PublicIPv4()
 	if err != nil {
 		return err
 	}
 
-	return sshRun(cmd, addr)
+	select {
+	case err = <-sshRun(cmd, addr):
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (doi *doInstance) Destroy() error {
@@ -101,7 +106,7 @@ func (doi *doInstance) isReady() bool {
 		return false
 	}
 
-	err = sshRun("ls", addr)
+	err = <-sshRun("ls", addr)
 	if err != nil {
 		log.Println(err)
 		return false
@@ -132,25 +137,21 @@ func blockTillReady(ctx context.Context, inst *doInstance) error {
 	return errors.New("not ready after configured timeout")
 }
 
-func sshStart(cmd string, addr string) error {
-	s, err := sshSession(addr)
-	if err != nil {
-		return err
-	}
+func sshRun(cmd string, addr string) <-chan error {
+	c := make(chan error)
+	go func() {
+		s, err := sshSession(addr)
+		if err != nil {
+			c <- err
+		}
 
-	return s.Start(cmd)
-}
+		if err := s.Run(cmd); err != nil {
+			c <- fmt.Errorf("can't run cmd: %w", err)
+		}
+		c <- nil
+	}()
 
-func sshRun(cmd string, addr string) error {
-	s, err := sshSession(addr)
-	if err != nil {
-		return err
-	}
-
-	if err := s.Run(cmd); err != nil {
-		return fmt.Errorf("can't run cmd: %w", err)
-	}
-	return nil
+	return c
 }
 
 func sshSession(addr string) (*ssh.Session, error) {

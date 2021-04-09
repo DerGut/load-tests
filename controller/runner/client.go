@@ -60,14 +60,14 @@ func (rc *RemoteClient) Start(ctx context.Context, runID, url string, a []accoun
 
 	log.Println("Deploying agent to", inst)
 	cmd := agentCmd(rc.ddApiKey)
-	if err = inst.RunCmd(cmd); err != nil {
+	if err = inst.RunCmd(ctx, cmd); err != nil {
 		inst.Destroy()
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
 	}
 
 	log.Println("Deploying runner to", inst)
 	cmd = runnerCmd(runID, url, string(accountsJson))
-	if err = inst.RunCmd(cmd); err != nil {
+	if err = inst.RunCmd(ctx, cmd); err != nil {
 		inst.Destroy()
 		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
 	}
@@ -82,6 +82,7 @@ func (rc *RemoteClient) Start(ctx context.Context, runID, url string, a []accoun
 func agentCmd(ddApiKey string) string {
 	return fmt.Sprintf(`docker run \
 	--detach \
+	--name dd-agent \
 	-v /var/run/docker.sock:/var/run/docker.sock:ro \
 	-v /proc/:/host/proc/:ro \
 	-v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
@@ -97,6 +98,7 @@ func runnerCmd(runID, url, accounts string) string {
 	--ipc=host \
 	--env NODE_OPTIONS=--max-old-space-size=4096 \
 	--env PRODUCTION=true \
+	--env DD_AGENT_HOST=dd-agent \
 	--env RUN_ID=%s \
 	--env URL=%s \
 	--env 'ACCOUNTS=%s' \

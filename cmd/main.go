@@ -37,6 +37,13 @@ func main() {
 
 	log.Println("Starting controller")
 	if err := c.Run(ctx, runCfg); err != nil {
+		if errors.Is(err, context.Canceled) {
+			os.Exit(0)
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			log.Println("Exceeded deadline")
+			os.Exit(1)
+		}
 		log.Fatalln("failed running:", err)
 	}
 }

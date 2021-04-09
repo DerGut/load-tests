@@ -7,7 +7,7 @@ type Provisioner interface {
 }
 
 type Instance interface {
-	RunCmd(cmd string) error
+	RunCmd(ctx context.Context, cmd string) error
 	Destroy() error
 	String() string
 }
