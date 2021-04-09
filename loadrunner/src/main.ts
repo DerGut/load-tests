@@ -1,6 +1,7 @@
 import { chromium } from "playwright-chromium";
-import { root as rootLogger } from "./logger";
 
+import { root as rootLogger } from "./logger";
+import statsd, { CLASSES, RUNNERS } from "./statsd";
 import LoadRunner from "./runner";
 
 (async () => {
@@ -14,9 +15,17 @@ import LoadRunner from "./runner";
     const lr = new LoadRunner(browser, runID, url, accounts);
     process.on("SIGINT", async () => {
         rootLogger.info("Received SIGINT");
-        await browser.close()
+        statsd.decrement(RUNNERS);
+        statsd.decrement(CLASSES, accounts.length);
+        await browser.close();
+    });
+    process.on("beforeExit", () => {
+        rootLogger.info("Exiting");
+        statsd.decrement(RUNNERS);
+        statsd.decrement(CLASSES, accounts.length);
     });
 
+    statsd.increment(RUNNERS);
     await lr.start();
     rootLogger.info(`Started all ${accounts.length} users`);
 })();

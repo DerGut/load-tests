@@ -7,6 +7,7 @@ import VirtualPupil from "./vus/pupil";
 import VirtualTeacher from "./vus/teacher";
 import VirtualUser from "./vus/base";
 import newLogger from "./logger";
+import statsd, { CLASSES, VUS } from "./statsd";
 
 export default class LoadRunner {
     logger = newLogger("runner");
@@ -26,6 +27,7 @@ export default class LoadRunner {
         const promises: Promise<VirtualUser[]>[] = this.accounts.map(
             async classroom => {
                 this.logger.info("next classroom");
+                statsd.increment(CLASSES);
                 if (classroom.prepared) {
                     return this.startPreparedClassroom(classroom);
                 } else {
@@ -45,12 +47,14 @@ export default class LoadRunner {
                         pageUrl: this.url,
                         thinkTimeFactor: this.drawThinkTimeFactor()
                     });
-                    console.time(vu.id);
-                    vu.run().catch(e => {
-                        this.logger.error(`Caught exception: ${e}`);
-                        this.logger.error(e);
-                        console.timeEnd(vu.id);
-                    });
+                    statsd.increment(VUS);
+                    vu.run()
+                        .then(() => statsd.decrement(VUS))
+                        .catch(e => {
+                            this.logger.error(`Caught exception: ${e}`);
+                            this.logger.error(e);
+                            statsd.decrement(VUS);
+                        });
                     return vu;
                 });
             });
