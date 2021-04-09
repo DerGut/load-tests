@@ -1,5 +1,5 @@
 run-local: build-controller build-runner
-	./main --dbUri=${MONGO_URI} --loadLevels=1 --stepSize=15m --classSize=5 --preparedPortion=0.3 --remote=false
+	./main --config config-local.json
 
 run-remote: build-controller
 	./main --config config-remote.json
