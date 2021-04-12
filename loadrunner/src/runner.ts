@@ -26,6 +26,7 @@ export default class LoadRunner {
         this.logger.info("Starting up")
         const promises: Promise<VirtualUser[]>[] = this.accounts.map(
             async classroom => {
+                await new Promise(resolve => setTimeout(resolve, 1 * 1000));
                 this.logger.info("next classroom");
                 statsd.increment(CLASSES);
                 if (classroom.prepared) {
@@ -41,6 +42,7 @@ export default class LoadRunner {
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
         const promises: Promise<VirtualUser>[] = classroom.pupils.map(
             async pupil => {
+                await new Promise(resolve => setTimeout(resolve, 1 * 1000));
                 return new Promise(async _ => {
                     const context = await this.browser.newContext();
                     const vu = new VirtualPupil(context, pupil, {
