@@ -63,7 +63,7 @@ async function parseArgs(args: string[]): Promise<{ runID: string, url: string, 
         }
     }
 
-    if (path.basename(accounts)) {
+    if (accounts.endsWith(".json")) {
         const buf = await fs.readFile(accounts);
         accounts = buf.toString();
     }
