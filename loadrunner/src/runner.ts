@@ -24,53 +24,52 @@ export default class LoadRunner {
 
     async start(): Promise<VirtualUser[]> {
         this.logger.info("Starting up")
-        const promises: Promise<VirtualUser[]>[] = this.accounts.map(
-            async classroom => {
-                await new Promise(resolve => setTimeout(resolve, 1 * 1000));
-                this.logger.info("next classroom");
-                statsd.increment(CLASSES);
-                if (classroom.prepared) {
-                    return this.startPreparedClassroom(classroom);
-                } else {
-                    return this.startNewClassroom(classroom);
-                }
-            });
+        const promises = [];
+        for (let i = 0; i < this.accounts.length; i++) {
+            this.logger.info("next classroom");
+            const classroom = this.accounts[i];
+            statsd.increment(CLASSES);
+            if (classroom.prepared) {
+                promises.push(this.startPreparedClassroom(classroom));
+            } else {
+                promises.push(this.startNewClassroom(classroom));
+            }
+            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
+        }
 
         return Promise.all(promises).then(all => all.flat());
     }
 
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
-        const promises: Promise<VirtualUser>[] = classroom.pupils.map(
-            async pupil => {
-                await new Promise(resolve => setTimeout(resolve, 1 * 1000));
-                return new Promise(async _ => {
-                    const context = await this.browser.newContext();
-                    const vu = new VirtualPupil(context, pupil, {
-                        pageUrl: this.url,
-                        thinkTimeFactor: this.drawThinkTimeFactor()
-                    });
-                    statsd.increment(VUS);
-                    vu.run()
-                        .then(() => statsd.decrement(VUS))
-                        .catch(e => {
-                            this.logger.error(`Caught exception: ${e}`);
-                            this.logger.error(e);
-                            statsd.decrement(VUS);
-                        });
-                    return vu;
-                });
-            });
-        promises.push(new Promise(async _ => {
+        const vus: VirtualUser[] = [];
+        for (let i = 0; i < classroom.pupils.length; i++) {
+            const pupil = classroom.pupils[i];
             const context = await this.browser.newContext();
-            const vu = new VirtualTeacher(context, classroom.teacher, {
+            const vu = new VirtualPupil(context, pupil, {
                 pageUrl: this.url,
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
-            vu.run();
-            return vu;
-        }));
+            statsd.increment(VUS);
+            vu.run()
+                .then(() => statsd.decrement(VUS))
+                .catch(e => {
+                    this.logger.error(`Caught exception: ${e}`);
+                    this.logger.error(e);
+                    statsd.decrement(VUS);
+                });
+            vus.push(vu);
+            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
+        }
 
-        return Promise.all(promises);
+        const context = await this.browser.newContext();
+        const vu = new VirtualTeacher(context, classroom.teacher, {
+            pageUrl: this.url,
+            thinkTimeFactor: this.drawThinkTimeFactor()
+        });
+        vu.run();
+        vus.push(vu);
+
+        return vus;
     }
 
     async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {
