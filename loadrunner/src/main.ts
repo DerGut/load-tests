@@ -5,9 +5,11 @@ import { chromium } from "playwright-chromium";
 import { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
 import LoadRunner from "./runner";
+import path from "path";
+import fs from "fs/promises";
 
 (async () => {
-    const { runID, url, accounts } = parseArgs(process.argv);
+    const { runID, url, accounts } = await parseArgs(process.argv);
 
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
     rootLogger.info(`runID: ${runID}`);
@@ -41,7 +43,7 @@ import LoadRunner from "./runner";
     rootLogger.info(`Started all ${accounts.length} users`);
 })();
 
-function parseArgs(args: string[]): { runID: string, url: string, accounts: Classroom[] } {
+async function parseArgs(args: string[]): Promise<{ runID: string, url: string, accounts: Classroom[] }> {
     let runID: string, url: string, accounts: string;
     if (args.length > 2) {
         if (args.length < 5) {
@@ -59,6 +61,11 @@ function parseArgs(args: string[]): { runID: string, url: string, accounts: Clas
             rootLogger.error("Please give RUN_ID, URL and ACCOUNTS env vars");
             process.exit(1);
         }
+    }
+
+    if (path.basename(accounts)) {
+        const buf = await fs.readFile(accounts);
+        accounts = buf.toString();
     }
 
     try {
