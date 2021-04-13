@@ -31,7 +31,9 @@ func main() {
 		c = controller.NewLocal()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	// Wait one step size longer for graceful shutdown
+	timeout := time.Duration(len(conf.LoadLevels)+1) * conf.StepSize.Duration
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	handleSignal(cancel)
 
