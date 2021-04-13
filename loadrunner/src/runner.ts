@@ -35,7 +35,7 @@ export default class LoadRunner {
             } else {
                 // promises.push(this.startNewClassroom(classroom));
             }
-            await new Promise(resolve => setTimeout(resolve, 60 * 1000));
+            await new Promise(resolve => setTimeout(resolve, 10 * 1000));
         }
 
         await Promise.all(promises).then(all => all.flat());
@@ -59,7 +59,7 @@ export default class LoadRunner {
                     statsd.decrement(VUS);
                 });
             vus.push(vu);
-            await new Promise(resolve => setTimeout(resolve, 60 * 1000));
+            await new Promise(resolve => setTimeout(resolve, 10 * 1000));
         }
 
         const context = await this.browser.newContext();
