@@ -11,13 +11,14 @@ RUN npm run build
 
 FROM mcr.microsoft.com/playwright:bionic as runner
 
+USER pwuser
 WORKDIR /home/pwuser/runner/
-
 COPY --from=builder /builder/package.json /builder/package-lock.json ./
+
+USER root
 RUN npm ci
 
 USER pwuser
-
 COPY --from=builder /builder/built/ built/
 
 CMD ["node", "built/main.js"]
