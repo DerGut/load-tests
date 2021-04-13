@@ -1,3 +1,4 @@
+import SegfaultHandler from "segfault-handler";
 import "dd-trace/init";
 
 import { chromium } from "playwright-chromium";
@@ -5,10 +6,12 @@ import { chromium } from "playwright-chromium";
 import { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
 import LoadRunner from "./runner";
-import path from "path";
 import fs from "fs/promises";
 
 (async () => {
+    SegfaultHandler.registerHandler();
+    SegfaultHandler.causeSegfault();
+    
     const { runID, url, accounts } = await parseArgs(process.argv);
 
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
