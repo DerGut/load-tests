@@ -65,7 +65,7 @@ func (rc *RemoteClient) Start(ctx context.Context, runID, url string, a []accoun
 	}
 
 	log.Println("Deploying agent to", inst)
-	cmd := agentCmd(rc.ddApiKey)
+	cmd := agentCmd(rc.ddApiKey, runID)
 	if err = inst.RunCmd(ctx, cmd); err != nil {
 		inst.Destroy()
 		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
@@ -88,7 +88,7 @@ func (rc *RemoteClient) Start(ctx context.Context, runID, url string, a []accoun
 	return nil
 }
 
-func agentCmd(ddApiKey string) string {
+func agentCmd(ddApiKey, runID string) string {
 	return fmt.Sprintf(`docker run \
 	--detach \
 	--name dd-agent \
@@ -96,24 +96,34 @@ func agentCmd(ddApiKey string) string {
 	-v /var/run/docker.sock:/var/run/docker.sock:ro \
 	-v /proc/:/host/proc/:ro \
 	-v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+	-v /etc/passwd:/etc/passwd:ro \
 	-p 8125:8125/udp \
 	--env DD_API_KEY=%s \
-	--env DD_DOGSTATSD_NON_LOCAL_TRAFFIC="true" \
-	%s`, ddApiKey, agentImage)
+	--env DD_TAGS=runId:%s \
+	--env DD_ENV=load-tests \
+	--env DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true \
+	--env DD_APM_ENABLED=true \
+	--env DD_APM_NON_LOCAL_TRAFFIC=true \
+	--env DD_PROCESS_AGENT_ENABLED=true \
+	%s`, ddApiKey, runID, agentImage)
 }
 
 func runnerCmd(runID, url, accounts string) string {
 	return fmt.Sprintf(`docker run \
 	--detach \
+	--name runner \
 	--network load-tests \
 	--ipc=host \
-	--env NODE_OPTIONS=--max-old-space-size=8192 \
-	--env PRODUCTION=true \
+	--env NODE_OPTIONS=--max-old-space-size=32256 \
+	--env NODE_ENV=production \
 	--env DD_AGENT_HOST=dd-agent \
+	--env DD_TRACE_AGENT_HOSTNAME=dd-agent \
+	--env DD_RUNTIME_METRICS_ENABLED=true \
+	--env DD_TAGS=runId:%s \
 	--env RUN_ID=%s \
 	--env URL=%s \
 	--env 'ACCOUNTS=%s' \
-	%s`, runID, url, accounts, runnerImage)
+	%s`, runID, runID, url, accounts, runnerImage)
 }
 
 func (rc *RemoteClient) Stop() error {
@@ -140,6 +150,9 @@ func (lc *LocalClient) Start(_ctx context.Context, runID, url string, a []accoun
 
 	cmd := exec.Command(
 		"node",
+		"--heap-prof",
+		"--heapsnapshot-near-heap-limit=3",
+		"--heapsnapshot-signal=SIGINFO",
 		runnerFile,
 		runID,
 		url,
