@@ -23,7 +23,7 @@ export default class LoadRunner {
         this.accounts = accounts;
     }
 
-    async start(): Promise<VirtualUser[]> {
+    async start() {
         this.logger.info("Starting up")
         const promises = [];
         for (let i = 0; i < this.accounts.length; i++) {
@@ -33,12 +33,12 @@ export default class LoadRunner {
             if (classroom.prepared) {
                 promises.push(this.startPreparedClassroom(classroom));
             } else {
-                promises.push(this.startNewClassroom(classroom));
+                // promises.push(this.startNewClassroom(classroom));
             }
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
-        return Promise.all(promises).then(all => all.flat());
+        await Promise.all(promises).then(all => all.flat());
     }
 
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
@@ -75,38 +75,37 @@ export default class LoadRunner {
         return vus;
     }
 
-    async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {
-        const classLog = new ClassLog(classroom.pupils.length);
-        const promises: Promise<VirtualUser>[] = classroom.pupils.map(
-            pupil => {
-                return new Promise(async resolve => {
-                    classLog.onClassCreated(async joinCode => {
-                        const context = await this.browser.newContext();
-                        const vu = new VirtualPupil(context, pupil, {
-                            pageUrl: joinUrl(this.url),
-                            joinCode,
-                            thinkTimeFactor: this.drawThinkTimeFactor()
-                        });
-                        vu.run();
-                        resolve(vu);
-                    });
-                });
-            });
-        promises.push(new Promise(async _ => {
-            const context = await this.browser.newContext();
-            const vu = new VirtualTeacher(context, classroom.teacher, {
-                pageUrl: this.url,
-                classLog: classLog,
-                className: classroom.name,
-                classSize: classroom.pupils.length,
-                thinkTimeFactor: this.drawThinkTimeFactor()
-            });
-            vu.run();
-            return vu;
-        }));
+    // async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {
+    //     const classLog = new ClassLog(classroom.pupils.length);
+    //     const vus: VirtualUser[] = [];
+    //     for (let i = 0; i < classroom.pupils.length; i++) {
+    //         const pupil = classroom.pupils[i];
+    //         classLog.onClassCreated(async joinCode => {
+    //             const context = await this.browser.newContext();
+    //             const vu = new VirtualPupil(context, pupil, {
+    //                 pageUrl: joinUrl(this.url),
+    //                 joinCode,
+    //                 thinkTimeFactor: this.drawThinkTimeFactor()
+    //             });
+    //             vu.run();
+    //             resolve(vu);
+    //         });
+    //     }
+    //     promises.push(new Promise(async _ => {
+    //         const context = await this.browser.newContext();
+    //         const vu = new VirtualTeacher(context, classroom.teacher, {
+    //             pageUrl: this.url,
+    //             classLog: classLog,
+    //             className: classroom.name,
+    //             classSize: classroom.pupils.length,
+    //             thinkTimeFactor: this.drawThinkTimeFactor()
+    //         });
+    //         vu.run();
+    //         return vu;
+    //     }));
 
-        return Promise.all(promises);
-    }
+    //     return Promise.all(promises);
+    // }
 
     drawThinkTimeFactor(): number {
         return Math.random() + 0.5;
