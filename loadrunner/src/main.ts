@@ -3,7 +3,7 @@ import "dd-trace/init";
 
 import { chromium } from "playwright-chromium";
 
-import { root as rootLogger } from "./logger";
+import newLogger, { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
 import LoadRunner from "./runner";
 import fs from "fs/promises";
@@ -18,13 +18,20 @@ import fs from "fs/promises";
 
     statsd.gauge("test", 2);
 
+    const pwLogger = newLogger("playwright");
     const browser = await chromium.launch({ 
         headless: true, 
         slowMo: 200,
         args: [
-            "--disable-dev-shm-usage", 
+            "--disable-dev-shm-usage",
             "--full-memory-crash-report"
-        ]
+        ],
+        logger: {
+            isEnabled: () => true,
+            log: (name, severity, message, args, hints) => {
+                pwLogger.log(severity, `${name}: ${message}: ${args}`, hints);
+            }
+        }
     });
 
     const lr = new LoadRunner(browser, runID, url, accounts);
