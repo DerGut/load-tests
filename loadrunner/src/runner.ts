@@ -35,8 +35,6 @@ export default class LoadRunner {
             } else {
                 promises.push(this.startNewClassroom(classroom));
             }
-            const file = v8.writeHeapSnapshot();
-            this.logger.info(`Written dump to ${file}`);
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
@@ -61,6 +59,8 @@ export default class LoadRunner {
                     statsd.decrement(VUS);
                 });
             vus.push(vu);
+            const file = v8.writeHeapSnapshot();
+            this.logger.info(`Written dump to ${file}`);
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
