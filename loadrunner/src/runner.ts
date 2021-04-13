@@ -25,20 +25,19 @@ export default class LoadRunner {
 
     async start() {
         this.logger.info("Starting up")
-        const promises = [];
+        const vus: VirtualUser[] = [];
         for (let i = 0; i < this.accounts.length; i++) {
             this.logger.info("next classroom");
             const classroom = this.accounts[i];
             statsd.increment(CLASSES);
             if (classroom.prepared) {
-                promises.push(this.startPreparedClassroom(classroom));
+                const pupils = await this.startPreparedClassroom(classroom)
+                vus.push(...pupils);
             } else {
                 // promises.push(this.startNewClassroom(classroom));
             }
             await new Promise(resolve => setTimeout(resolve, 10 * 1000));
         }
-
-        await Promise.all(promises).then(all => all.flat());
     }
 
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
@@ -57,6 +56,7 @@ export default class LoadRunner {
                     this.logger.error(`Caught exception: ${e}`);
                     this.logger.error(e);
                     statsd.decrement(VUS);
+                    context.close();
                 });
             vus.push(vu);
             await new Promise(resolve => setTimeout(resolve, 10 * 1000));
