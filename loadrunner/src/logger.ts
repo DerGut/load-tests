@@ -1,10 +1,10 @@
-import winston, { Logger } from "winston";
+import winston, { Logform, Logger } from "winston";
 
-let formats;
-if (!process.env.PRODUCTION) {
+let formats: Logform.Format[];
+if (process.env.NODE_ENV !== "production") {
     formats = [
         winston.format.timestamp(),
-        winston.format.cli()
+        winston.format.simple()
     ];
 } else {
     formats = [
