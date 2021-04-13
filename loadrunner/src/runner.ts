@@ -35,7 +35,7 @@ export default class LoadRunner {
             } else {
                 // promises.push(this.startNewClassroom(classroom));
             }
-            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
+            await new Promise(resolve => setTimeout(resolve, 60 * 1000));
         }
 
         await Promise.all(promises).then(all => all.flat());
@@ -59,9 +59,7 @@ export default class LoadRunner {
                     statsd.decrement(VUS);
                 });
             vus.push(vu);
-            const file = v8.writeHeapSnapshot();
-            this.logger.info(`Written dump to ${file}`);
-            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
+            await new Promise(resolve => setTimeout(resolve, 60 * 1000));
         }
 
         const context = await this.browser.newContext();
