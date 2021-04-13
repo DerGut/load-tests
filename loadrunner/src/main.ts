@@ -28,8 +28,12 @@ import fs from "fs/promises";
         ],
         logger: {
             isEnabled: () => true,
-            log: (name, severity, message, args, hints) => {
-                pwLogger.log(severity, `${name}: ${message}: ${args}`, hints);
+            log: (name, severity, message, args) => {
+                if (message instanceof Error) {
+                    pwLogger.error(message);
+                } else {
+                    pwLogger.log(severity, message, {name, args});
+                }
             }
         }
     });
