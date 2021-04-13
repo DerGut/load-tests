@@ -1,4 +1,5 @@
 import path from "path";
+import v8 from "v8";
 
 import { Browser } from "playwright-chromium";
 
@@ -34,6 +35,8 @@ export default class LoadRunner {
             } else {
                 promises.push(this.startNewClassroom(classroom));
             }
+            const file = v8.writeHeapSnapshot();
+            this.logger.info(`Written dump to ${file}`);
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
