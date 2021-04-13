@@ -10,8 +10,7 @@ import fs from "fs/promises";
 
 (async () => {
     SegfaultHandler.registerHandler();
-    SegfaultHandler.causeSegfault();
-    
+
     const { runID, url, accounts } = await parseArgs(process.argv);
 
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
