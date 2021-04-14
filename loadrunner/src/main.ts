@@ -61,7 +61,7 @@ import fs from "fs/promises";
 
 async function parseArgs(args: string[]): Promise<{ runID: string, url: string, accounts: Classroom[], headless: boolean }> {
     let runID: string, url: string, accounts: string;
-    let headless: boolean;
+    let headless: boolean = true;
     if (args.length > 2) {
         if (args.length < 5) {
             rootLogger.error("Not enough arguments provided");
@@ -70,9 +70,7 @@ async function parseArgs(args: string[]): Promise<{ runID: string, url: string, 
         runID = args[2];
         url = args[3];
         accounts = args[4];
-        if (args.length > 5) {
-            headless = args[5] === "true";
-        } else {
+        if (args.length > 5 && args[5] === "false") {
             headless = false;
         }
     } else {
@@ -83,7 +81,9 @@ async function parseArgs(args: string[]): Promise<{ runID: string, url: string, 
             rootLogger.error("Please give RUN_ID, URL and ACCOUNTS env vars");
             process.exit(1);
         }
-        headless = process.env.HEADLESS === "true";
+        if (process.env.HEADLESS === "false") {
+            headless = false;
+        }
     }
 
     if (accounts.endsWith(".json")) {
