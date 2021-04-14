@@ -36,7 +36,7 @@ export default class LoadRunner {
             } else {
                 // promises.push(this.startNewClassroom(classroom));
             }
-            await new Promise(resolve => setTimeout(resolve, 10 * 1000));
+            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
     }
 
@@ -59,7 +59,7 @@ export default class LoadRunner {
                     context.close();
                 });
             vus.push(vu);
-            await new Promise(resolve => setTimeout(resolve, 10 * 1000));
+            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
         const context = await this.browser.newContext();
