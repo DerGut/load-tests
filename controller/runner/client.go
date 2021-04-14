@@ -118,7 +118,7 @@ func runnerCmd(runID, url, accounts string) string {
 	--name runner \
 	--network load-tests \
 	--ipc=host \
-	--env NODE_OPTIONS=--max-old-space-size=32256 \
+	--env NODE_OPTIONS=--max-old-space-size=4096 \
 	--env NODE_ENV=production \
 	--env DD_AGENT_HOST=dd-agent \
 	--env DD_TRACE_AGENT_HOSTNAME=dd-agent \
@@ -154,9 +154,6 @@ func (lc *LocalClient) Start(_ctx context.Context, runID, url string, a []accoun
 
 	cmd := exec.Command(
 		"node",
-		"--heap-prof",
-		"--heapsnapshot-near-heap-limit=3",
-		"--heapsnapshot-signal=SIGINFO",
 		runnerFile,
 		runID,
 		url,
