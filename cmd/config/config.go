@@ -11,13 +11,21 @@ import (
 	"github.com/DerGut/load-tests/controller"
 )
 
+// Config captures all configuration provided by a config file,
+// env vars and command line args. Parameters provided via env vars
+// overwrite those provided by a file. Parameters provided via command
+// line args overwrite both.
+// This is with the exception of the boolean variables NoReset and Local.
+// A true value always wins in that case.
 type Config struct {
 	Url             string                `json:"url"`
+	NoReset         bool                  `json:"noReset"`
 	DbUri           string                `json:"dbUri"`
 	LoadLevels      controller.LoadLevels `json:"loadLevels"`
 	StepSize        controller.StepSize   `json:"stepSize"`
 	ClassSize       int                   `json:"classSize"`
 	PreparedPortion float64               `json:"preparedPortion"`
+	Local           bool                  `json:"local"`
 	DoApiKey        string                `json:"doApiKey"`
 	DdApiKey        string                `json:"ddApiKey"`
 	DoRegion        string                `json:"ddRegion"`
@@ -39,6 +47,9 @@ func (c *Config) merge(other *Config) {
 	if other.Url != "" {
 		c.Url = other.Url
 	}
+
+	c.NoReset = c.NoReset || other.NoReset
+
 	if other.DbUri != "" {
 		c.DbUri = other.DbUri
 	}
@@ -54,6 +65,9 @@ func (c *Config) merge(other *Config) {
 	if other.PreparedPortion > 0 {
 		c.PreparedPortion = other.PreparedPortion
 	}
+
+	c.Local = c.Local || other.Local
+
 	if other.DoApiKey != "" {
 		c.DoApiKey = other.DoApiKey
 	}
@@ -72,7 +86,7 @@ var (
 	configFile string
 
 	url             string
-	resetDb         bool
+	noReset         bool
 	dbUri           string
 	loadLevels      controller.LoadLevels
 	stepSize        time.Duration
@@ -89,13 +103,16 @@ func init() {
 	flag.StringVar(&configFile, "config", "", "Path to a json config file.")
 
 	flag.StringVar(&url, "url", "https://beta.pearup.de", "The URL to the system under test.")
-	flag.BoolVar(&resetDb, "resetDb", true, "Whether or not to reset the mongo instance.")
+
+	flag.BoolVar(&noReset, "noReset", false, "Whether to skip the reset of the mongo instance.")
 	flag.StringVar(&dbUri, "dbUri", "", "The URI to the mongo instance.")
+
 	flag.Var(&loadLevels, "loadLevels", "A comma-separated list of class concurrencies.")
 	flag.DurationVar(&stepSize, "stepSize", 15*time.Minute, "time between each step of the load curve.")
 	flag.IntVar(&classSize, "classSize", 30, "The number of pupils within a class.")
 	flag.Float64Var(&preparedPortion, "preparedPortion", 0.3, "The portion of classes for which accounts should be created beforehand.")
-	flag.BoolVar(&remote, "remote", true, "Whether to provision remote machines to run the tests. If false, they will be run locally.")
+
+	flag.BoolVar(&remote, "local", false, "If true, the tests will be run locally.")
 	flag.StringVar(&doApiKey, "doApiKey", "", "The API key for digital ocean.")
 	flag.StringVar(&ddApiKey, "ddApiKey", "", "The API key for datadog.")
 	flag.StringVar(&doRegion, "doRegion", "fra1", "The region to provision the runner instances in.")
