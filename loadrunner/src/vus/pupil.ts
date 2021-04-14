@@ -223,7 +223,7 @@ class Exercise {
         const rand = Math.random() + 0.5;
         const thinkTime = thinkTimeFactor * rand * this.avgWorkDurationSec;
         console.log(`thinking ${thinkTime}sec`);
-        await think(thinkTime / 10);
+        await think(thinkTime);
     }
 
     async work(thinkTimeFactor: number) {
