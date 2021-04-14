@@ -95,6 +95,7 @@ func agentCmd(ddApiKey, runID string) string {
 	--network load-tests \
 	-v /var/run/docker.sock:/var/run/docker.sock:ro \
 	-v /proc/:/host/proc/:ro \
+	-v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
 	-v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
 	-v /etc/passwd:/etc/passwd:ro \
 	-p 8125:8125/udp \
@@ -103,6 +104,9 @@ func agentCmd(ddApiKey, runID string) string {
 	--env DD_ENV=load-tests \
 	--env DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true \
 	--env DD_APM_ENABLED=true \
+	--env DD_LOGS_ENABLED=true \
+	--env DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+	--env DD_CONTAINER_EXCLUDE="name:dd-agent" \
 	--env DD_APM_NON_LOCAL_TRAFFIC=true \
 	--env DD_PROCESS_AGENT_ENABLED=true \
 	%s`, ddApiKey, runID, agentImage)
