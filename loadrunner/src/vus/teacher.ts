@@ -31,7 +31,7 @@ export default class VirtualTeacher extends VirtualUser {
         console.log("Doing stuff");
         while (this.sessionActive()) {
             // continue
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(10 * 1000);
         }
     }
 

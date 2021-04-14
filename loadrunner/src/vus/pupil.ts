@@ -55,12 +55,16 @@ export default class VirtualPupil extends VirtualUser {
 
     async login(page: Page) {
         await this.think();
+
+        await page.click("text='Einloggen'");
+
         // type with some delay because PearUp checks asynchronously, whether the username exists
         const typeDelay = 200;
         await page.type("[placeholder='Nutzername/Email']", this.account.username, { delay: typeDelay });
         await page.type("[placeholder='Passwort']", this.account.password, { delay: typeDelay });
+
         await this.time("login", async () => {
-            await page.click("text='Einloggen'");
+            await page.click("button:has-text('Einloggen')");
             const result = await Promise.race([
                 page.waitForSelector("text='Einloggen nicht möglich! Überprüfe Benutzernamen/Email und Passwort!'"),
                 page.waitForSelector("text='Aufträge'")
@@ -152,7 +156,7 @@ class TaskSeries {
 
                 let done;
                 do {
-                    this.time(async () => {
+                    await this.time("submit exercise", async () => {
                         done = await exercise.submit();
                     })
                 } while (!done);
@@ -166,7 +170,7 @@ class TaskSeries {
 
         await think(2 * thinkTimeFactor);
 
-        await this.time(async () => {
+        await this.time("submit task series", async () => {
             await this.page.click(".taskSeries__submitButton");
             await this.page.waitForSelector("text='Aufträge'");
         });
@@ -238,9 +242,9 @@ class Exercise {
 
     async evaluation(): Promise<boolean> {
         const evaluation = await Promise.race([
-            this.page.waitForSelector("svg.success__checkmark"), // correct answer
-            this.page.waitForSelector(".ppSwal"), // wrong answer, modal
-            this.page.waitForSelector(".exerciseHints"), // wrong answer, hints displayed
+            this.page.waitForSelector("svg.success__checkmark").catch(), // correct answer
+            this.page.waitForSelector(".ppSwal").catch(), // wrong answer, modal
+            this.page.waitForSelector(".exerciseHints").catch(), // wrong answer, hints displayed
         ]);
 
         const classes = await evaluation.getAttribute("class");
