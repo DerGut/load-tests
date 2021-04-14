@@ -44,7 +44,7 @@ export default class VirtualPupil extends VirtualUser {
                 await page.waitForSelector("#taskSeries");
             });
 
-            const taskSeries = new TaskSeries(page, this.time);
+            const taskSeries = new TaskSeries(page, this.time.bind(this));
             await taskSeries.work(this.config.thinkTimeFactor);
             await page.click("button:has-text('OK')"); // dismiss modal
             if (await this.investmentAvailable(page)) {
