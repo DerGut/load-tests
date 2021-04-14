@@ -1,6 +1,7 @@
 import { BrowserContext } from "playwright-chromium";
 import { Logger } from "winston";
 import newLogger from "../logger";
+import statsd from "../statsd";
 
 export default class VirtualUser {
     logger: Logger;
@@ -33,9 +34,10 @@ export default class VirtualUser {
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 
-    async time(label: string, fn: Function) {
+    async time(label: string, fn: () => Promise<void>) {
         console.time(`${this.id}:${label}`);
-        await fn();
+        const intrumented = statsd.asyncDistTimer(fn, label);
+        await intrumented();
         console.timeEnd(`${this.id}:${label}`);
     }
 }
