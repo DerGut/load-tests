@@ -39,7 +39,7 @@ export default class VirtualPupil extends VirtualUser {
             this.logger.info("Continuing doing stuff");
             await this.think();
 
-            await this.time("accept task series", async () => {
+            await this.time("taskseries_accept", async () => {
                 await page.click("text=Annehmen");
                 await page.waitForSelector("#taskSeries");
             });
@@ -156,7 +156,7 @@ class TaskSeries {
 
                 let done;
                 do {
-                    await this.time("submit exercise", async () => {
+                    await this.time("exercise_submit", async () => {
                         done = await exercise.submit();
                     })
                 } while (!done);
@@ -170,7 +170,7 @@ class TaskSeries {
 
         await think(2 * thinkTimeFactor);
 
-        await this.time("submit task series", async () => {
+        await this.time("taskseries_submit", async () => {
             await this.page.click(".taskSeries__submitButton");
             await this.page.waitForSelector("text='Aufträge'");
         });
