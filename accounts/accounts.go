@@ -55,6 +55,7 @@ func buildPupils(number, classId int) []Pupil {
 		p[i] = Pupil{
 			Username: fmt.Sprintf("pupil%dt%d", classId+1, i+1),
 			Password: defaultPassword,
+			Company:  fmt.Sprintf("company%dt%d", classId+1, i+1),
 		}
 	}
 
@@ -128,4 +129,5 @@ type Teacher struct {
 type Pupil struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Company  string `json:"company"`
 }
