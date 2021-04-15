@@ -34,10 +34,8 @@ export default class VirtualUser {
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 
-    async time(label: string, fn: () => Promise<void>) {
-        console.time(`${this.id}:${label}`);
+    async time(label: string, fn: () => Promise<any>): Promise<any> {
         const intrumented = statsd.asyncDistTimer(fn, label);
-        await intrumented();
-        console.timeEnd(`${this.id}:${label}`);
+        return await intrumented();
     }
 }

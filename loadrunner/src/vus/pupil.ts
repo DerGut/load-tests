@@ -59,7 +59,9 @@ export default class VirtualPupil extends VirtualUser {
     async login(page: Page) {
         await this.think();
 
-        await page.click("text='Einloggen'");
+        await this.time("login_click", async () => {
+            await page.click("text='Einloggen'");
+        });
 
         // type with some delay because PearUp checks asynchronously, whether the username exists
         const typeDelay = 200;
@@ -143,7 +145,7 @@ class TaskSeries {
     async work(thinkTimeFactor: number) {
         let heading;
         // This is not synchronous with the server. measure it for reference
-        this.time("taskseries_heading", async () => {
+        await this.time("taskseries_heading", async () => {
             const taskSeries = await this.page.waitForSelector("h1");
             heading = await taskSeries.innerText();
         });
@@ -185,18 +187,22 @@ class TaskSeries {
     }
 
     async nextExercise() {
-        const exercises = await this.page.$$(".exercise");
-        const next = exercises.pop();
+        const next = await this.time("exercise_next", async () => {
+            const exercises = await this.page.$$(".exercise");
+            return exercises.pop();
+        });
         if (!next) {
             return null;
         }
-
-        const body = await next.waitForSelector("div > div:nth-of-type(3)");
-        if (!body) {
-            throw new Error("didn't find exercise body");
-        }
-
-        const type = await body.getAttribute("class");
+        const type = await this.time("exercise_type", async () => {
+            const body = await next.waitForSelector("div > div:nth-of-type(3)");
+            if (!body) {
+                throw new Error("didn't find exercise body");
+            }
+    
+            return await body.getAttribute("class");
+        });
+        
         switch (type) {
             case "freeText":
                 return new FreeText(next, this.page);
