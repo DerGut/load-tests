@@ -25,10 +25,10 @@ func main() {
 	runCfg := parseRunConfig(conf, accs)
 
 	var c controller.Controller
-	if conf.DoApiKey != "" {
-		c = controller.NewRemote(conf.DoApiKey, conf.DdApiKey, conf.DoRegion, conf.DoSize)
-	} else {
+	if conf.Local {
 		c = controller.NewLocal()
+	} else {
+		c = controller.NewRemote(conf.DoApiKey, conf.DdApiKey, conf.DoRegion, conf.DoSize)
 	}
 
 	// Wait one step size longer for graceful shutdown
@@ -62,7 +62,7 @@ func setupAccounts(conf *config.Config) []accounts.Classroom {
 		log.Fatalln("Couldn't read accounts:", err)
 	}
 
-	if conf.DbUri != "" {
+	if !conf.NoReset {
 		restoreDump(conf.DbUri)
 	}
 
