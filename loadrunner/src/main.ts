@@ -1,7 +1,7 @@
 import SegfaultHandler from "segfault-handler";
 import "dd-trace/init";
 
-import { chromium } from "playwright-chromium";
+import { BrowserContext, chromium } from "playwright-chromium";
 
 import newLogger, { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
@@ -40,8 +40,19 @@ import fs from "fs/promises";
             }
         }
     });
+    const contexts = (await Promise.all(
+        accounts.map(createContextsForClass))
+        ).flat();
 
-    const lr = new LoadRunner(browser, runID, url, accounts);
+    async function createContextsForClass(classroom: Classroom): Promise<BrowserContext[]> {
+        const ctx = [await browser.newContext()];
+        for (let i = 0; i < classroom.pupils.length; i++) {
+            ctx.push(await browser.newContext());
+        }
+        return ctx;
+    }
+
+    const lr = new LoadRunner(contexts, runID, url, accounts);
     process.on("SIGINT", async () => {
         rootLogger.info("Received SIGINT");
         statsd.decrement(RUNNERS);

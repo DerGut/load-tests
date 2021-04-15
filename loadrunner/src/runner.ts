@@ -1,7 +1,7 @@
 import path from "path";
 import v8 from "v8";
 
-import { Browser } from "playwright-chromium";
+import { Browser, BrowserContext } from "playwright-chromium";
 
 import ClassLog from "./vus/classLog";
 import VirtualPupil from "./vus/pupil";
@@ -12,12 +12,12 @@ import statsd, { CLASSES, VUS } from "./statsd";
 
 export default class LoadRunner {
     logger = newLogger("runner");
-    browser: Browser;
+    contexts: BrowserContext[];
     runID: string;
     url: string;
     accounts: Classroom[];
-    constructor(browser: Browser, runID: string, url: string, accounts: Classroom[]) {
-        this.browser = browser;
+    constructor(contexts: BrowserContext[], runID: string, url: string, accounts: Classroom[]) {
+        this.contexts = contexts;
         this.runID = runID;
         this.url = url;
         this.accounts = accounts;
@@ -44,7 +44,10 @@ export default class LoadRunner {
         const vus: VirtualUser[] = [];
         for (let i = 0; i < classroom.pupils.length; i++) {
             const pupil = classroom.pupils[i];
-            const context = await this.browser.newContext();
+            const context = this.contexts.pop();
+            if (!context) {
+                throw new Error("Not enough contexts provided");
+            }
             const vu = new VirtualPupil(context, pupil, {
                 pageUrl: this.url,
                 thinkTimeFactor: this.drawThinkTimeFactor()
@@ -62,7 +65,10 @@ export default class LoadRunner {
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
-        const context = await this.browser.newContext();
+        const context = await this.contexts.pop();
+        if (!context) {
+            throw new Error("Not enough contexts provided");
+        }
         const vu = new VirtualTeacher(context, classroom.teacher, {
             pageUrl: this.url,
             thinkTimeFactor: this.drawThinkTimeFactor()
