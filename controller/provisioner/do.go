@@ -112,8 +112,6 @@ func (doi *doInstance) Destroy() error {
 	client := godo.NewFromToken(doi.apiToken)
 	ds := do.NewDropletsService(client)
 
-	log.Println("Destroying", doi.droplet.Name)
-
 	return ds.Delete(doi.droplet.ID)
 }
 

@@ -146,8 +146,9 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 func (c *controller) cleanup() {
 	log.Println("Cleaning up")
 	for _, r := range c.activeRunners {
+		log.Println("Stopping runner", r)
 		if err := r.Stop(); err != nil {
-			log.Println("failed to stop runner", err)
+			log.Println("failed to stop, please stop manually", err)
 		}
 	}
 }
