@@ -38,7 +38,8 @@ import fs from "fs/promises";
                     pwLogger.log(severity, message, {name, args});
                 }
             }
-        }
+        },
+        handleSIGINT: false
     });
     const contexts = (await Promise.all(
         accounts.map(createContextsForClass))
@@ -53,21 +54,22 @@ import fs from "fs/promises";
     }
 
     const lr = new LoadRunner(contexts, runID, url, accounts);
-    process.on("SIGINT", async () => {
-        rootLogger.info("Received SIGINT");
+    lr.on("stopped", async () => {
+        rootLogger.info("Runner has stopped.");
         statsd.decrement(RUNNERS);
         statsd.decrement(CLASSES, accounts.length);
         await browser.close();
     });
-    process.on("beforeExit", () => {
-        rootLogger.info("Exiting");
-        statsd.decrement(RUNNERS);
-        statsd.decrement(CLASSES, accounts.length);
+    process.on("SIGINT", async () => {
+        rootLogger.info("Received SIGINT, stopping runner.");
+        lr.on("stopped", async () => process.exit(130));
+        lr.stop();
     });
+    process.on("exit", () => rootLogger.info("Exiting"));
 
     statsd.increment(RUNNERS);
     await lr.start();
-    rootLogger.info(`Started all ${accounts.length} users`);
+    rootLogger.info(`Started all ${accounts.length * (accounts[0].pupils.length + 1)} users`);
 })();
 
 async function parseArgs(args: string[]): Promise<{ runID: string, url: string, accounts: Classroom[], headless: boolean }> {

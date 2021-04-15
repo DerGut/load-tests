@@ -9,14 +9,17 @@ import VirtualTeacher from "./vus/teacher";
 import VirtualUser from "./vus/base";
 import newLogger from "./logger";
 import statsd, { CLASSES, VUS } from "./statsd";
+import EventEmitter from "events";
 
-export default class LoadRunner {
+export default class LoadRunner extends EventEmitter {
     logger = newLogger("runner");
     contexts: BrowserContext[];
     runID: string;
     url: string;
     accounts: Classroom[];
+    vus: VirtualUser[] = [];
     constructor(contexts: BrowserContext[], runID: string, url: string, accounts: Classroom[]) {
+        super();
         this.contexts = contexts;
         this.runID = runID;
         this.url = url;
@@ -25,19 +28,31 @@ export default class LoadRunner {
 
     async start() {
         this.logger.info("Starting up")
-        const vus: VirtualUser[] = [];
         for (let i = 0; i < this.accounts.length; i++) {
             this.logger.info("next classroom");
             const classroom = this.accounts[i];
             statsd.increment(CLASSES);
             if (classroom.prepared) {
                 const pupils = await this.startPreparedClassroom(classroom)
-                vus.push(...pupils);
+                this.vus.push(...pupils);
             } else {
                 // promises.push(this.startNewClassroom(classroom));
             }
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
+    }
+
+    async stop() {
+        let pending = this.vus.length;
+        this.vus.forEach(vu => {
+            vu.on("stopped", () => {
+                pending--;
+                if (pending <= 0) {
+                    this.emit("stopped");
+                }
+            });
+            vu.stop()
+        });
     }
 
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
@@ -52,20 +67,13 @@ export default class LoadRunner {
                 pageUrl: this.url,
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
-            statsd.increment(VUS);
-            vu.run()
-                .then(() => statsd.decrement(VUS))
-                .catch(e => {
-                    this.logger.error(`Caught exception: ${e}`);
-                    this.logger.error(e);
-                    statsd.decrement(VUS);
-                    context.close();
-                });
+            this.handleVU(vu, context);
+            vu.start();
             vus.push(vu);
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
-        const context = await this.contexts.pop();
+        const context = this.contexts.pop();
         if (!context) {
             throw new Error("Not enough contexts provided");
         }
@@ -73,10 +81,22 @@ export default class LoadRunner {
             pageUrl: this.url,
             thinkTimeFactor: this.drawThinkTimeFactor()
         });
-        vu.run();
+        this.handleVU(vu, context);
+        vu.start();
         vus.push(vu);
 
         return vus;
+    }
+
+    async handleVU(vu: VirtualUser, context: BrowserContext) {
+        vu.on("started", () => statsd.increment(VUS));
+        vu.on("failed", e => {
+            this.logger.error("VU failed", e);
+        });
+        vu.on("stopped", async () => {
+            statsd.decrement(VUS);
+            await context.close();
+        });
     }
 
     // async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {

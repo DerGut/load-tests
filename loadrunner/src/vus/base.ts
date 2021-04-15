@@ -1,9 +1,10 @@
+import EventEmitter from "events";
 import { BrowserContext } from "playwright-chromium";
 import { Logger } from "winston";
 import newLogger from "../logger";
 import statsd from "../statsd";
 
-export default class VirtualUser {
+export default class VirtualUser extends EventEmitter {
     logger: Logger;
     context: BrowserContext;
     thinkTimeFactor: number;
@@ -11,6 +12,7 @@ export default class VirtualUser {
     active: boolean = true;
     id: string;
     constructor(browserContext: BrowserContext, id: string, thinkTimeFactor: number) {
+        super();
         this.context = browserContext;
         this.thinkTimeFactor = thinkTimeFactor;
         this.id = id;
@@ -21,8 +23,23 @@ export default class VirtualUser {
         return this.active;
     }
 
+    async start() {
+        this.emit("started");
+        try {
+            await this.run();
+        } catch (e) {
+            this.emit("failed", e);
+        } finally {
+            this.emit("stopped");
+        }
+    }
+
+    async run() {
+        throw new Error("Abstract method");
+    }
+
     async stop() {
-        // TODO: wait until run has finished
+        this.emit("stopping");
         this.active = false;
 
     }
