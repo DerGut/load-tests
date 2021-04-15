@@ -1,4 +1,4 @@
-import { BrowserContext, ElementHandle, Page } from "playwright-chromium";
+import { BrowserContext, ElementHandle, errors, Page } from "playwright-chromium";
 
 import { Config } from "./config";
 import VirtualUser from "./base";
@@ -25,16 +25,44 @@ export default class VirtualPupil extends VirtualUser {
         const page = await this.context.newPage();
         await this.think();
         await this.think();
+        // TODO: retry this too
         await page.goto(this.config.pageUrl);
         await this.think();
 
-        if (this.config.joinCode) {
-            throw new Error("class join not implemented yet");
-        } else {
-            this.logger.info("Logging into account");
-            await this.login(page);
+        while (this.sessionActive()) {
+            try {
+                this.logger.info("Logging into account");
+                await this.login(page);
+            } catch (e) {
+                if (!this.sessionActive()) {
+                    return;
+                } else if (e instanceof errors.TimeoutError) {
+                    this.logger.error("Refreshing and logging in again", e);
+                    await page.reload();
+                } else {
+                    throw e;
+                }
+            }
         }
 
+        while (this.sessionActive()) {
+            try {
+                await this.play(page);
+            } catch (e) {
+                if (!this.sessionActive()) {
+                    return;
+                } else if (e instanceof errors.TimeoutError) {
+                    this.logger.error("Refreshing and continuing to play", e);
+                    // TODO: after refresh, we need to check pending task series in the workplace
+                    await page.reload();
+                } else {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    async play(page: Page) {
         while (this.sessionActive()) {
             this.logger.info("Continuing doing stuff");
             await this.think();
@@ -44,7 +72,7 @@ export default class VirtualPupil extends VirtualUser {
                 await page.waitForSelector("#taskSeries");
             });
 
-            const taskSeries = new TaskSeries(page, this.time.bind(this));
+            const taskSeries = new TaskSeries(page, this.time.bind(this), this.sessionActive.bind(this));
             await taskSeries.work(this.config.thinkTimeFactor);
             await page.click("button:has-text('OK')"); // dismiss modal
             if (await this.investmentAvailable(page)) {
@@ -57,6 +85,14 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async login(page: Page) {
+        if (this.config.joinCode) {
+            throw new Error("class join not implemented yet");
+        } else {
+            await this.loginExistingAccount(page);
+        }
+    }
+
+    async loginExistingAccount(page: Page) {
         await this.think();
 
         await this.time("login_click", async () => {
@@ -137,9 +173,11 @@ export default class VirtualPupil extends VirtualUser {
 class TaskSeries {
     page: Page;
     time: Function;
-    constructor(page: Page, timeFunction: Function) {
+    sessionActive: () => boolean;
+    constructor(page: Page, timeFunction: Function, sessionActive: () => boolean) {
         this.page = page;
         this.time = timeFunction;
+        this.sessionActive = sessionActive;
     }
 
     async work(thinkTimeFactor: number) {
@@ -152,7 +190,7 @@ class TaskSeries {
         
         console.log(`Started taskSeries "${heading}"`);
 
-        while (!await this.page.$(".taskSeries__submitButton")) {
+        while (this.sessionActive() && !await this.page.$(".taskSeries__submitButton")) {
             if (Math.random() < 0.1) {
                 await this.sendChatMessage();
             }
@@ -218,7 +256,7 @@ class TaskSeries {
     }
 
     async sendChatMessage() {
-
+        // TODO: implement
     }
 }
 
