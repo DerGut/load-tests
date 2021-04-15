@@ -155,7 +155,7 @@ func (c *controller) cleanup() {
 	for _, run := range c.activeRunners {
 		wg.Add(1)
 		go func(r runner.Client) {
-			log.Println("Stopping runner", r)
+			log.Println("Stopping runner:", r)
 			if err := r.Stop(); err != nil {
 				log.Println("failed to stop, please stop manually", err)
 			}
