@@ -41,9 +41,10 @@ func NewRemote(doApiToken, ddApiKey, region, size string) Client {
 }
 
 type RemoteClient struct {
-	provisioner provisioner.Provisioner
+	provisioner provisioner.Provisioner // why is this in here?
 	instance    provisioner.Instance
 	ddApiKey    string
+	name        string
 }
 
 type Step struct {
@@ -54,8 +55,8 @@ type Step struct {
 
 func (rc *RemoteClient) Start(ctx context.Context, step *Step) error {
 	runnerCounter += 1
-	instID := fmt.Sprintf("%s-%d", step.RunID, runnerCounter)
-	inst, err := rc.provisioner.Provision(ctx, instID)
+	rc.name = fmt.Sprintf("%s-%d", step.RunID, runnerCounter)
+	inst, err := rc.provisioner.Provision(ctx, rc.name)
 	if err != nil {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
@@ -158,7 +159,18 @@ func runnerCmd(runID, url, accounts string) string {
 }
 
 func (rc *RemoteClient) Stop() error {
-	return rc.instance.Destroy() // TODO: stop processes or just don't bother?
+	// Graceful shutdown allows runner to update metrics that track numbers of runners, VUs, etc.
+	err := rc.instance.RunCmd(context.TODO(), "docker stop runner")
+	if err != nil {
+		log.Println("Graceful shutdown failed")
+	}
+
+	log.Println("Destroying", rc.instance)
+	return rc.instance.Destroy()
+}
+
+func (rc *RemoteClient) String() string {
+	return rc.name
 }
 
 func NewLocal() Client {
@@ -202,4 +214,8 @@ func (lc *LocalClient) Start(_ctx context.Context, s *Step) error {
 
 func (lc *LocalClient) Stop() error {
 	return lc.proc.Signal(os.Interrupt)
+}
+
+func (lc *LocalClient) String() string {
+	return "local"
 }
