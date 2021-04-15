@@ -48,7 +48,10 @@ export default class VirtualPupil extends VirtualUser {
             await taskSeries.work(this.config.thinkTimeFactor);
             await page.click("button:has-text('OK')"); // dismiss modal
             if (await this.investmentAvailable(page)) {
-                await this.invest(page);
+                // This is not synchronous with the server. measure it for reference
+                await this.time("invest", async () => {
+                    await this.invest(page);
+                });
             }
         }
     }
@@ -138,8 +141,13 @@ class TaskSeries {
     }
 
     async work(thinkTimeFactor: number) {
-        const taskSeries = await this.page.waitForSelector("h1"); // ist nicht das paket sondern die exercise?
-        const heading = await taskSeries.innerText();
+        let heading;
+        // This is not synchronous with the server. measure it for reference
+        this.time("taskseries_heading", async () => {
+            const taskSeries = await this.page.waitForSelector("h1");
+            heading = await taskSeries.innerText();
+        });
+        
         console.log(`Started taskSeries "${heading}"`);
 
         while (!await this.page.$(".taskSeries__submitButton")) {
