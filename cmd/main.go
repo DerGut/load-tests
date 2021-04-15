@@ -31,7 +31,7 @@ func main() {
 	if conf.Local {
 		c = controller.NewLocal()
 	} else {
-		c = controller.NewRemote(p, conf.DdApiKey)
+		c = controller.NewRemote(runID(), p, conf.DdApiKey)
 	}
 
 	// Wait one step size longer for graceful shutdown
@@ -75,7 +75,6 @@ func setupAccounts(conf *config.Config) []accounts.Classroom {
 func parseRunConfig(conf *config.Config, accounts []accounts.Classroom) controller.RunConfig {
 	lc := controller.LoadCurve{LoadLevels: conf.LoadLevels, StepSize: conf.StepSize}
 	return controller.RunConfig{
-		RunID:     runID(),
 		Url:       conf.Url,
 		LoadCurve: &lc,
 		Accounts:  accounts,

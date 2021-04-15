@@ -32,28 +32,29 @@ type Client interface {
 	Stop() error
 }
 
-func NewRemote(ddApiKey string) Client {
+func NewRemote(runID, ddApiKey string) Client {
 	runnerCounter += 1
 	return &RemoteClient{
+		runID:    runID,
+		name:     fmt.Sprintf("%s-%d", runID, runnerCounter),
 		ddApiKey: ddApiKey,
-		name:     fmt.Sprintf("%d", runnerCounter),
 	}
 }
 
 type RemoteClient struct {
-	instance provisioner.Instance
-	ddApiKey string
+	runID    string
 	name     string
+	ddApiKey string
+	instance provisioner.Instance
 }
 
 type Step struct {
-	RunID    string
 	Url      string
 	Accounts []accounts.Classroom
 }
 
 func (rc *RemoteClient) Start(ctx context.Context, step *Step, p provisioner.Provisioner) error {
-	inst, err := p.Provision(ctx, fmt.Sprintf("%s-%s", step.RunID, rc.name))
+	inst, err := p.Provision(ctx, rc.name)
 	if err != nil {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
@@ -82,7 +83,7 @@ func (rc *RemoteClient) deploy(ctx context.Context, inst provisioner.Instance, s
 	}
 
 	log.Println("Deploying agent to", inst)
-	cmd := agentCmd(rc.ddApiKey, step.RunID)
+	cmd := agentCmd(rc.ddApiKey, rc.runID)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -105,7 +106,7 @@ func (rc *RemoteClient) deploy(ctx context.Context, inst provisioner.Instance, s
 	}
 
 	log.Println("Deploying runner to", inst)
-	cmd = runnerCmd(step.RunID, step.Url, string(accountsJson))
+	cmd = runnerCmd(rc.runID, step.Url, string(accountsJson))
 	if err := inst.RunCmd(ctx, cmd); err != nil {
 		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
 	}
@@ -191,7 +192,7 @@ func (lc *LocalClient) Start(_ctx context.Context, s *Step, _ provisioner.Provis
 	cmd := exec.Command(
 		"node",
 		runnerFile,
-		s.RunID,
+		"local-run",
 		s.Url,
 		string(accountsJson),
 	)
@@ -210,7 +211,11 @@ func (lc *LocalClient) Start(_ctx context.Context, s *Step, _ provisioner.Provis
 }
 
 func (lc *LocalClient) Stop() error {
-	return lc.proc.Signal(os.Interrupt)
+	if err := lc.proc.Signal(os.Interrupt); err != nil {
+		return err
+	}
+	_, err := lc.proc.Wait()
+	return err
 }
 
 func (lc *LocalClient) String() string {

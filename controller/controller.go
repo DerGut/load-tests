@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/DerGut/load-tests/accounts"
@@ -16,7 +17,6 @@ type Controller interface {
 	Run(ctx context.Context, cfg RunConfig) error
 }
 type RunConfig struct {
-	RunID     string
 	Url       string
 	LoadCurve *LoadCurve
 	Accounts  []accounts.Classroom
@@ -25,6 +25,7 @@ type RunConfig struct {
 type RunnerFunc func() runner.Client
 type controller struct {
 	RunnerFunc
+	runID         string
 	activeRunners []runner.Client
 	provisioner   provisioner.Provisioner
 }
@@ -37,11 +38,12 @@ func NewLocal() Controller {
 	}
 }
 
-func NewRemote(p provisioner.Provisioner, ddApiKey string) Controller {
+func NewRemote(runID string, p provisioner.Provisioner, ddApiKey string) Controller {
 	return &controller{
+		runID:       runID,
 		provisioner: p,
 		RunnerFunc: func() runner.Client {
-			return runner.NewRemote(ddApiKey)
+			return runner.NewRemote(runID, ddApiKey)
 		},
 	}
 }
@@ -58,7 +60,7 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 			panic("No Load decrease implemented yet")
 		}
 		if toAdd > 0 {
-			if err := c.nextStep(ctx, cfg.RunID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+toAdd]); err != nil {
+			if err := c.nextStep(ctx, c.runID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+toAdd]); err != nil {
 				return err
 			}
 			accountIdx += toAdd
@@ -115,7 +117,7 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 	for _, accs := range accsByRunner {
 		go func(a []accounts.Classroom) {
 			r := c.RunnerFunc()
-			s := runner.Step{RunID: runID, Url: url, Accounts: a}
+			s := runner.Step{Url: url, Accounts: a}
 			if err := r.Start(ctx, &s, c.provisioner); err != nil {
 				ch <- runnerResult{nil, err}
 			} else {
@@ -148,10 +150,18 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 
 func (c *controller) cleanup() {
 	log.Println("Cleaning up")
-	for _, r := range c.activeRunners {
-		log.Println("Stopping runner", r)
-		if err := r.Stop(); err != nil {
-			log.Println("failed to stop, please stop manually", err)
-		}
+
+	wg := sync.WaitGroup{}
+	for _, run := range c.activeRunners {
+		wg.Add(1)
+		go func(r runner.Client) {
+			log.Println("Stopping runner", r)
+			if err := r.Stop(); err != nil {
+				log.Println("failed to stop, please stop manually", err)
+			}
+			wg.Done()
+		}(run)
 	}
+
+	wg.Wait()
 }
