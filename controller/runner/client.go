@@ -28,7 +28,7 @@ const (
 var runnerCounter = 0
 
 type Client interface {
-	Start(ctx context.Context, runID, url string, accounts []accounts.Classroom) error
+	Start(context.Context, *Step) error
 	Stop() error
 }
 
@@ -46,44 +46,71 @@ type RemoteClient struct {
 	ddApiKey    string
 }
 
-func (rc *RemoteClient) Start(ctx context.Context, runID, url string, a []accounts.Classroom) error {
-	accountsJson, err := json.Marshal(a)
-	if err != nil {
-		return err
-	}
+type Step struct {
+	RunID    string
+	Url      string
+	Accounts []accounts.Classroom
+}
 
+func (rc *RemoteClient) Start(ctx context.Context, step *Step) error {
 	runnerCounter += 1
-	instID := fmt.Sprintf("%s-%d", runID, runnerCounter)
+	instID := fmt.Sprintf("%s-%d", step.RunID, runnerCounter)
 	inst, err := rc.provisioner.Provision(ctx, instID)
 	if err != nil {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
 
-	if err = inst.RunCmd(ctx, "docker network create load-tests"); err != nil {
+	err = rc.deploy(ctx, inst, step)
+	if err != nil {
 		inst.Destroy()
-		return fmt.Errorf("failed to create docker network on host %s: %w", inst, err)
-	}
-
-	log.Println("Deploying agent to", inst)
-	cmd := agentCmd(rc.ddApiKey, runID)
-	if err = inst.RunCmd(ctx, cmd); err != nil {
-		inst.Destroy()
-		return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
-	}
-
-	// Let agent start up first to catch all metrics
-	time.Sleep(1 * time.Minute)
-
-	log.Println("Deploying runner to", inst)
-	cmd = runnerCmd(runID, url, string(accountsJson))
-	if err = inst.RunCmd(ctx, cmd); err != nil {
-		inst.Destroy()
-		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
+		return fmt.Errorf("failed runner deployment: %w", err)
 	}
 
 	rc.instance = inst
 
 	log.Println(inst, "ready")
+
+	return nil
+}
+
+func (rc *RemoteClient) deploy(ctx context.Context, inst provisioner.Instance, step *Step) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		if err := inst.RunCmd(ctx, "docker network create load-tests"); err != nil {
+			return fmt.Errorf("failed to create docker network on host %s: %w", inst, err)
+		}
+	}
+
+	log.Println("Deploying agent to", inst)
+	cmd := agentCmd(rc.ddApiKey, step.RunID)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		if err := inst.RunCmd(ctx, cmd); err != nil {
+			return fmt.Errorf("failed to start statsD agent on host %s: %w", inst, err)
+		}
+	}
+
+	// Let agent start up first to catch all metrics
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(1 * time.Minute):
+	}
+
+	accountsJson, err := json.Marshal(step.Accounts)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Deploying runner to", inst)
+	cmd = runnerCmd(step.RunID, step.Url, string(accountsJson))
+	if err := inst.RunCmd(ctx, cmd); err != nil {
+		return fmt.Errorf("failed to start runner on host %s: %w", inst, err)
+	}
 
 	return nil
 }
@@ -146,8 +173,8 @@ type LocalClient struct {
 	proc *os.Process
 }
 
-func (lc *LocalClient) Start(_ctx context.Context, runID, url string, a []accounts.Classroom) error {
-	accountsJson, err := json.Marshal(a)
+func (lc *LocalClient) Start(_ctx context.Context, s *Step) error {
+	accountsJson, err := json.Marshal(s.Accounts)
 	if err != nil {
 		return err
 	}
@@ -155,8 +182,8 @@ func (lc *LocalClient) Start(_ctx context.Context, runID, url string, a []accoun
 	cmd := exec.Command(
 		"node",
 		runnerFile,
-		runID,
-		url,
+		s.RunID,
+		s.Url,
 		string(accountsJson),
 	)
 	cmd.Stdout = os.Stdout

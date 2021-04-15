@@ -112,7 +112,8 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 	for _, accs := range accsByRunner {
 		go func(a []accounts.Classroom) {
 			r := c.RunnerFunc()
-			if err := r.Start(ctx, runID, url, a); err != nil {
+			s := runner.Step{RunID: runID, Url: url, Accounts: a}
+			if err := r.Start(ctx, &s); err != nil {
 				ch <- runnerResult{nil, err}
 			} else {
 				ch <- runnerResult{r, nil}
