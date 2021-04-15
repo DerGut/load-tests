@@ -15,7 +15,10 @@ if (process.env.NODE_ENV !== "production") {
 
 export const root = winston.createLogger({
     transports: [new winston.transports.Console()],
-    format: winston.format.combine(...formats)
+    format: winston.format.combine(...formats),
+    defaultMeta: {
+        runId: process.env.RUN_ID
+    }
 });
 
 export default function newLogger(name: string): Logger {
