@@ -19,7 +19,7 @@ import (
 
 const (
 	// ClassesPerRunner is the number of classes a single runner can manage simultaneously
-	ClassesPerRunner = 10
+	ClassesPerRunner = 2
 
 	agentImage  = "datadog/agent:latest"
 	runnerImage = "jsteinmann/load-tests-runner:latest"
@@ -28,23 +28,22 @@ const (
 var runnerCounter = 0
 
 type Client interface {
-	Start(context.Context, *Step) error
+	Start(context.Context, *Step, provisioner.Provisioner) error
 	Stop() error
 }
 
-func NewRemote(doApiToken, ddApiKey, region, size string) Client {
-	do := provisioner.NewDO(doApiToken, region, size)
+func NewRemote(ddApiKey string) Client {
+	runnerCounter += 1
 	return &RemoteClient{
-		provisioner: do,
-		ddApiKey:    ddApiKey,
+		ddApiKey: ddApiKey,
+		name:     fmt.Sprintf("%d", runnerCounter),
 	}
 }
 
 type RemoteClient struct {
-	provisioner provisioner.Provisioner // why is this in here?
-	instance    provisioner.Instance
-	ddApiKey    string
-	name        string
+	instance provisioner.Instance
+	ddApiKey string
+	name     string
 }
 
 type Step struct {
@@ -53,10 +52,8 @@ type Step struct {
 	Accounts []accounts.Classroom
 }
 
-func (rc *RemoteClient) Start(ctx context.Context, step *Step) error {
-	runnerCounter += 1
-	rc.name = fmt.Sprintf("%s-%d", step.RunID, runnerCounter)
-	inst, err := rc.provisioner.Provision(ctx, rc.name)
+func (rc *RemoteClient) Start(ctx context.Context, step *Step, p provisioner.Provisioner) error {
+	inst, err := p.Provision(ctx, fmt.Sprintf("%s-%s", step.RunID, rc.name))
 	if err != nil {
 		return fmt.Errorf("failed to provision instance: %w", err)
 	}
@@ -185,7 +182,7 @@ type LocalClient struct {
 	proc *os.Process
 }
 
-func (lc *LocalClient) Start(_ctx context.Context, s *Step) error {
+func (lc *LocalClient) Start(_ctx context.Context, s *Step, _ provisioner.Provisioner) error {
 	accountsJson, err := json.Marshal(s.Accounts)
 	if err != nil {
 		return err

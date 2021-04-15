@@ -12,6 +12,7 @@ import (
 	"github.com/DerGut/load-tests/accounts"
 	"github.com/DerGut/load-tests/cmd/config"
 	"github.com/DerGut/load-tests/controller"
+	"github.com/DerGut/load-tests/controller/provisioner"
 )
 
 func init() {
@@ -24,11 +25,13 @@ func main() {
 	accs := setupAccounts(conf)
 	runCfg := parseRunConfig(conf, accs)
 
+	p := provisioner.NewDO(conf.DoApiKey, conf.DoRegion, conf.DoSize)
+
 	var c controller.Controller
 	if conf.Local {
 		c = controller.NewLocal()
 	} else {
-		c = controller.NewRemote(conf.DoApiKey, conf.DdApiKey, conf.DoRegion, conf.DoSize)
+		c = controller.NewRemote(p, conf.DdApiKey)
 	}
 
 	// Wait one step size longer for graceful shutdown

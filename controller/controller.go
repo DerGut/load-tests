@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DerGut/load-tests/accounts"
+	"github.com/DerGut/load-tests/controller/provisioner"
 	"github.com/DerGut/load-tests/controller/runner"
 )
 
@@ -25,6 +26,7 @@ type RunnerFunc func() runner.Client
 type controller struct {
 	RunnerFunc
 	activeRunners []runner.Client
+	provisioner   provisioner.Provisioner
 }
 
 func NewLocal() Controller {
@@ -35,10 +37,11 @@ func NewLocal() Controller {
 	}
 }
 
-func NewRemote(doApiToken, ddApiKey, region, size string) Controller {
+func NewRemote(p provisioner.Provisioner, ddApiKey string) Controller {
 	return &controller{
+		provisioner: p,
 		RunnerFunc: func() runner.Client {
-			return runner.NewRemote(doApiToken, ddApiKey, region, size)
+			return runner.NewRemote(ddApiKey)
 		},
 	}
 }
@@ -113,7 +116,7 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 		go func(a []accounts.Classroom) {
 			r := c.RunnerFunc()
 			s := runner.Step{RunID: runID, Url: url, Accounts: a}
-			if err := r.Start(ctx, &s); err != nil {
+			if err := r.Start(ctx, &s, c.provisioner); err != nil {
 				ch <- runnerResult{nil, err}
 			} else {
 				ch <- runnerResult{r, nil}
