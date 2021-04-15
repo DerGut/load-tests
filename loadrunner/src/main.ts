@@ -60,12 +60,12 @@ import fs from "fs/promises";
         statsd.decrement(CLASSES, accounts.length);
         await browser.close();
     });
-    process.on("SIGINT", async () => {
+    process.once("SIGINT", async () => {
         rootLogger.info("Received SIGINT, stopping runner.");
         lr.on("stopped", async () => process.exit(130));
         lr.stop();
     });
-    process.on("exit", () => rootLogger.info("Exiting"));
+    process.once("exit", () => rootLogger.info("Exiting"));
 
     statsd.increment(RUNNERS);
     await lr.start();
