@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -53,7 +55,9 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 			panic("No Load decrease implemented yet")
 		}
 		if toAdd > 0 {
-			c.nextStep(ctx, cfg.RunID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+toAdd])
+			if err := c.nextStep(ctx, cfg.RunID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+toAdd]); err != nil {
+				return err
+			}
 			accountIdx += toAdd
 		}
 		currentLoad = load
@@ -68,12 +72,17 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 	return nil
 }
 
-func (c *controller) nextStep(ctx context.Context, runID string, url string, accs []accounts.Classroom) {
+func (c *controller) nextStep(ctx context.Context, runID string, url string, accs []accounts.Classroom) error {
 	accsByRunner := batchAccounts(accs)
 
 	log.Println("Starting", len(accsByRunner), "runner(s) with", len(accs), "classes in total")
-	runners := c.startRunners(ctx, runID, url, accsByRunner)
+	runners, err := c.startRunners(ctx, runID, url, accsByRunner)
+	if err != nil {
+		return err
+	}
+
 	c.activeRunners = append(c.activeRunners, runners...)
+	return nil
 }
 
 func batchAccounts(accs []accounts.Classroom) [][]accounts.Classroom {
@@ -90,28 +99,47 @@ func batchAccounts(accs []accounts.Classroom) [][]accounts.Classroom {
 	return batches
 }
 
-func (c *controller) startRunners(ctx context.Context, runID, url string, accsByRunner [][]accounts.Classroom) []runner.Client {
-	rCh := make(chan runner.Client, len(accsByRunner))
+type runnerResult struct {
+	runner.Client
+	err error
+}
+
+func (c *controller) startRunners(ctx context.Context, runID, url string, accsByRunner [][]accounts.Classroom) ([]runner.Client, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ch := make(chan runnerResult, len(accsByRunner))
 	for _, accs := range accsByRunner {
 		go func(a []accounts.Classroom) {
 			r := c.RunnerFunc()
 			if err := r.Start(ctx, runID, url, a); err != nil {
-				log.Println("Error occured while starting runner:", err)
-				rCh <- nil
+				ch <- runnerResult{nil, err}
+			} else {
+				ch <- runnerResult{r, nil}
 			}
-			rCh <- r
 		}(accs)
 	}
 
 	var runners []runner.Client
+	var err error
 	for i := 0; i < len(accsByRunner); i++ {
-		r := <-rCh
-		if r != nil {
-			runners = append(runners, r)
+		r := <-ch
+		if r.err != nil {
+			if errors.Is(r.err, context.Canceled) {
+				continue
+			}
+			err = r.err
+			cancel()
+		} else {
+			runners = append(runners, r.Client)
 		}
 	}
 
-	return runners
+	if err != nil {
+		return nil, fmt.Errorf("error occured while starting runner: %w", err)
+	}
+
+	return runners, nil
 }
 
 func (c *controller) cleanup() {
