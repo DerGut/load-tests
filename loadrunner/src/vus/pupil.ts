@@ -2,6 +2,7 @@ import { BrowserContext, ElementHandle, errors, Page } from "playwright-chromium
 
 import { Config } from "./config";
 import VirtualUser from "./base";
+import statsd, { ERRORS, EXERCISES_SUBMITTED, TASKSERIES_SUBMITTED } from "../statsd";
 
 const selectors = {
     SUBMIT_TASK_SERIES: "button:has-text('Abgeben')",
@@ -40,6 +41,7 @@ export default class VirtualPupil extends VirtualUser {
                     return;
                 } else if (e instanceof errors.TimeoutError) {
                     this.logger.error("Refreshing and logging in again", e);
+                    statsd.increment(ERRORS);
                     await page.reload();
                 } else {
                     throw e;
@@ -55,7 +57,7 @@ export default class VirtualPupil extends VirtualUser {
                     return;
                 } else if (e instanceof errors.TimeoutError) {
                     this.logger.error("Refreshing and continuing to play", e);
-                    // TODO: after refresh, we need to check pending task series in the workplace
+                    statsd.increment(ERRORS);
                     await page.reload();
                 } else {
                     throw e;
@@ -69,14 +71,19 @@ export default class VirtualPupil extends VirtualUser {
             this.logger.info("Continuing doing stuff");
             await this.think();
 
-            await this.time("taskseries_accept", async () => {
-                await page.click("text=Annehmen");
-                await page.waitForSelector("#taskSeries");
-            });
+            if (await page.$("button:has-text('Zum Arbeitsplatz')")) {
+                await page.click("button:has-text('Zum Arbeitsplatz')");
+            } else {
+                this.time("taskseries_accept", async () => {
+                    await page.click("text=Annehmen");
+                    await page.waitForSelector("#taskSeries");
+                });
+            }
 
             const taskSeries = new TaskSeries(page, this.time.bind(this), this.sessionActive.bind(this));
             await taskSeries.work(this.config.thinkTimeFactor);
             await page.click("button:has-text('OK')"); // dismiss modal
+            statsd.increment(TASKSERIES_SUBMITTED);
             if (await this.investmentAvailable(page)) {
                 // This is not synchronous with the server. measure it for reference
                 await this.time("invest", async () => {
@@ -204,6 +211,7 @@ class TaskSeries {
                         done = await exercise.submit();
                     })
                 } while (!done);
+                statsd.increment(EXERCISES_SUBMITTED);
 
                 await think(2 * thinkTimeFactor);
             }
@@ -255,6 +263,8 @@ class TaskSeries {
         await page.click("a:has-text('Nachrichten')");
         await page.fill(".chat textarea", "asdfghjkl");
         await page.click(".chat button");
+        await page.click("a:has-text('Nachrichten')");
+        // TODO: Feedback erhalten (>gehe zur Aufgabe<) erscheint in Chat
     }
 }
 
@@ -311,15 +321,41 @@ class Exercise {
             throw new Error(`Unknown evaluation: ${classes}`);
         }
     }
+
+    async getHint() {
+        console.log("getting hint")
+        const button = await this.handle.waitForSelector("button:has-text('Tipp')");
+        if (await button.isEnabled()) {
+            await button.click();
+        } else {
+            console.log("is not enabled...");
+        }
+    }
+
+    async requestHelp() {
+        console.log("Requesting help");
+        const questionButton = await this.handle.waitForSelector("button:has-text('Fragen')");
+        await questionButton.click();
+        const textarea = await this.page.waitForSelector("textarea");
+        await textarea.fill("qwertyuiopasdfghjkl");
+        const submit = await this.page.waitForSelector("text='Frage stellen!'");
+        await submit.click();
+        // const minimize = await this.handle.waitForSelector("text=minimieren");
+        // await minimize.click();
+    }
 }
 
 class FreeText extends Exercise {
     avgWorkDurationSec = 300;
     async work(thinkTimeFactor: number) {
+        if (Math.random() < 0.3) {
+            await this.requestHelp();
+        }
         await this.think(thinkTimeFactor);
         const input = await this.handle.waitForSelector(".ql-editor");
         await input.fill("abcdefghijklmnopqrstuvwxyz");
     }
+    
     async submit(): Promise<boolean> {
         const submit = await this.handle.waitForSelector("button:has-text('Abgeben')");
         await submit.click();
@@ -331,6 +367,10 @@ class Survey extends Exercise {
     avgWorkDurationSec = 60;
     async work(thinkTimeFactor: number) {
         await this.think(thinkTimeFactor);
+        if (Math.random() < 0.2) {
+            await this.requestHelp();
+        }
+
         const div = await this.handle.waitForSelector(".survey > div");
         const subType = await div.getAttribute("class");
         switch (subType) {
@@ -357,6 +397,13 @@ class Survey extends Exercise {
 
 class MultipleChoice extends Exercise {
     avgWorkDurationSec = 60;
+
+    async work(thinkTimeFactor: number) {
+        await this.think(thinkTimeFactor);
+        if (Math.random() < 0.2) {
+            await this.requestHelp();
+        }
+    }
 
     async submit(): Promise<boolean> {
         const submit = await this.handle.waitForSelector("button:has-text('Überprüfen')");
