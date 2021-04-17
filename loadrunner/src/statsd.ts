@@ -17,9 +17,15 @@ export default new StatsD({
 const RUNNERS = "running.runners";
 const CLASSES = "running.classes";
 const VUS = "running.vus";
+const ERRORS = "errors";
+const EXERCISES_SUBMITTED = "submitted.exercices";
+const TASKSERIES_SUBMITTED = "submitted.taskseries";
 
 export {
     RUNNERS,
     CLASSES,
-    VUS
+    VUS,
+    ERRORS,
+    EXERCISES_SUBMITTED,
+    TASKSERIES_SUBMITTED,
 }
