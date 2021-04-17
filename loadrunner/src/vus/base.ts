@@ -43,9 +43,9 @@ export default class VirtualUser extends EventEmitter {
         this.active = false;
     }
 
+    // Pauses for some time between 2.5s and 22.5s
     async think() {
-        // const thinkTime = drawFromThinkTimeDistribution() * this.thinkTimeFactor;
-        const rand = Math.random() + 0.5;
+        const rand = Math.random() + 0.5; // 0.5 to 1.5
         const thinkTime = rand * this.thinkTimeFactor * 10 * 1000;
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
