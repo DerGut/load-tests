@@ -29,10 +29,12 @@ export default class VirtualPupil extends VirtualUser {
         await page.goto(this.config.pageUrl);
         await this.think();
 
-        while (this.sessionActive()) {
+        let loggedIn = false;
+        while (!loggedIn && this.sessionActive()) {
             try {
                 this.logger.info("Logging into account");
                 await this.login(page);
+                loggedIn = true;
             } catch (e) {
                 if (!this.sessionActive()) {
                     return;
@@ -137,16 +139,10 @@ export default class VirtualPupil extends VirtualUser {
         const rand = Math.random();
         console.log("random number: ", rand);
         if (rand < 0.1) {
-            await sendChatMessage();
         } else if (rand < 0.2) {
             await askQuestion(page);
         } else if (rand < 0.3) {
             await getHint(page);
-        }
-
-        async function sendChatMessage() {
-            console.log("Sending chat message");
-            console.error("not implemented yet");
         }
 
         async function getHint(page: Page) {
@@ -192,7 +188,7 @@ class TaskSeries {
 
         while (this.sessionActive() && !await this.page.$(".taskSeries__submitButton")) {
             if (Math.random() < 0.1) {
-                await this.sendChatMessage();
+                await this.sendChatMessage(this.page);
             }
             await think(2 * thinkTimeFactor);
             if (!await this.page.$(".proceed")) {
@@ -255,8 +251,10 @@ class TaskSeries {
         }
     }
 
-    async sendChatMessage() {
-        // TODO: implement
+    async sendChatMessage(page: Page) {
+        await page.click("a:has-text('Nachrichten')");
+        await page.fill(".chat textarea", "asdfghjkl");
+        await page.click(".chat button");
     }
 }
 

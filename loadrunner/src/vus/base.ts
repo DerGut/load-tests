@@ -41,7 +41,6 @@ export default class VirtualUser extends EventEmitter {
     async stop() {
         this.emit("stopping");
         this.active = false;
-
     }
 
     async think() {
