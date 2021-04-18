@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/DerGut/load-tests/accounts"
-	"github.com/DerGut/load-tests/cmd/config"
+	"github.com/DerGut/load-tests/cmd/loadctl/config"
 	"github.com/DerGut/load-tests/controller"
 	"github.com/DerGut/load-tests/controller/provisioner"
 )
@@ -23,6 +23,9 @@ func main() {
 	conf := config.Parse()
 
 	accs := setupAccounts(conf)
+
+	// Shuffle in order to use prepared and unprepared classes evenly throughout the test run
+	shuffle(accs)
 	runCfg := parseRunConfig(conf, accs)
 
 	p := provisioner.NewDO(conf.DoApiKey, conf.DoRegion, conf.DoSize)
@@ -56,13 +59,9 @@ func main() {
 func setupAccounts(conf *config.Config) []accounts.Classroom {
 	maxConcurrency := maxConcurrency(conf.LoadLevels)
 
-	accs, err := accounts.Get(maxConcurrency, conf.ClassSize)
+	accs, err := accounts.Get(maxConcurrency, conf.ClassSize, conf.PreparedPortion)
 	if err != nil {
-		if os.IsNotExist(err) || errors.Is(err, accounts.ErrDumpTooSmall) {
-			generateAccounts(maxConcurrency, conf.ClassSize, conf.PreparedPortion)
-			os.Exit(0)
-		}
-		log.Fatalln("Couldn't read accounts:", err)
+		log.Fatalln("Couldn't get accounts:", err)
 	}
 
 	if !conf.NoReset {
@@ -70,6 +69,14 @@ func setupAccounts(conf *config.Config) []accounts.Classroom {
 	}
 
 	return accs
+}
+
+func shuffle(accs []accounts.Classroom) {
+	rand.Shuffle(len(accs), func(i, j int) {
+		tmp := accs[i]
+		accs[i] = accs[j]
+		accs[j] = tmp
+	})
 }
 
 func parseRunConfig(conf *config.Config, accounts []accounts.Classroom) controller.RunConfig {
@@ -114,14 +121,6 @@ func maxConcurrency(levels controller.LoadLevels) int {
 	}
 
 	return max
-}
-
-func generateAccounts(maxConcurrency, classSize int, preparedPortion float64) {
-	log.Println("Generating new accounts file")
-	if err := accounts.Generate(maxConcurrency, classSize, preparedPortion); err != nil {
-		log.Fatalln("Failed to generate accounts file", err)
-	}
-	log.Println("A new accounts file has been created. Please create a mongodb dump from it by running the local Meteor server")
 }
 
 func restoreDump(dbUri string) {

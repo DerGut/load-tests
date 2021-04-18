@@ -18,18 +18,22 @@ import (
 // This is with the exception of the boolean variables NoReset and Local.
 // A true value always wins in that case.
 type Config struct {
-	Url             string                `json:"url"`
-	NoReset         bool                  `json:"noReset"`
-	DbUri           string                `json:"dbUri"`
+	Url string `json:"url"`
+
+	NoReset bool   `json:"noReset"`
+	DbUri   string `json:"dbUri"`
+
 	LoadLevels      controller.LoadLevels `json:"loadLevels"`
 	StepSize        controller.StepSize   `json:"stepSize"`
 	ClassSize       int                   `json:"classSize"`
 	PreparedPortion float64               `json:"preparedPortion"`
-	Local           bool                  `json:"local"`
-	DoApiKey        string                `json:"doApiKey"`
-	DdApiKey        string                `json:"ddApiKey"`
-	DoRegion        string                `json:"ddRegion"`
-	DoSize          string                `json:"doSize"`
+
+	Local            bool   `json:"local"`
+	ClassesPerRunner int    `json:"classesPerRunner"`
+	DoApiKey         string `json:"doApiKey"`
+	DdApiKey         string `json:"ddApiKey"`
+	DoRegion         string `json:"ddRegion"`
+	DoSize           string `json:"doSize"`
 }
 
 func Parse() *Config {
@@ -49,10 +53,10 @@ func (c *Config) merge(other *Config) {
 	}
 
 	c.NoReset = c.NoReset || other.NoReset
-
 	if other.DbUri != "" {
 		c.DbUri = other.DbUri
 	}
+
 	if other.LoadLevels != nil {
 		c.LoadLevels = other.LoadLevels
 	}
@@ -67,7 +71,9 @@ func (c *Config) merge(other *Config) {
 	}
 
 	c.Local = c.Local || other.Local
-
+	if other.ClassesPerRunner > 0 {
+		c.ClassesPerRunner = other.ClassesPerRunner
+	}
 	if other.DoApiKey != "" {
 		c.DoApiKey = other.DoApiKey
 	}
@@ -85,18 +91,21 @@ func (c *Config) merge(other *Config) {
 var (
 	configFile string
 
-	url             string
+	url string
+
 	noReset         bool
 	dbUri           string
 	loadLevels      controller.LoadLevels
 	stepSize        time.Duration
 	classSize       int
 	preparedPortion float64
-	remote          bool
-	doApiKey        string
-	ddApiKey        string
-	doRegion        string
-	doSize          string
+
+	local            bool
+	classesPerRunner int
+	doApiKey         string
+	ddApiKey         string
+	doRegion         string
+	doSize           string
 )
 
 func init() {
@@ -110,9 +119,10 @@ func init() {
 	flag.Var(&loadLevels, "loadLevels", "A comma-separated list of class concurrencies.")
 	flag.DurationVar(&stepSize, "stepSize", 15*time.Minute, "time between each step of the load curve.")
 	flag.IntVar(&classSize, "classSize", 30, "The number of pupils within a class.")
-	flag.Float64Var(&preparedPortion, "preparedPortion", 0.3, "The portion of classes for which accounts should be created beforehand.")
+	flag.Float64Var(&preparedPortion, "preparedPortion", 0, "The portion of classes for which accounts should be created beforehand.")
 
-	flag.BoolVar(&remote, "local", false, "If true, the tests will be run locally.")
+	flag.BoolVar(&local, "local", false, "If true, the tests will be run locally.")
+	flag.IntVar(&classesPerRunner, "classesPerRunner", 1, "The number of classes managed by a single runner instance.")
 	flag.StringVar(&doApiKey, "doApiKey", "", "The API key for digital ocean.")
 	flag.StringVar(&ddApiKey, "ddApiKey", "", "The API key for datadog.")
 	flag.StringVar(&doRegion, "doRegion", "fra1", "The region to provision the runner instances in.")
@@ -123,8 +133,9 @@ func init() {
 
 func defaultConfig() *Config {
 	return &Config{
-		DoRegion: "fra1",
-		DoSize:   "m-2vcpu-16gb",
+		ClassesPerRunner: 1,
+		DoRegion:         "fra1",
+		DoSize:           "s-2vcpu-8gb",
 	}
 }
 
