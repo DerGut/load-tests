@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/DerGut/load-tests/ssh"
-	"github.com/digitalocean/doctl/do"
 	"github.com/digitalocean/godo"
 	"github.com/digitalocean/godo/util"
 )
@@ -57,7 +56,11 @@ func (dop *doProvisioner) Provision(ctx context.Context, instanceID string) (Ins
 		return nil, err
 	}
 
-	if err = waitForReady(ctx, d); err != nil {
+	if err = waitForReachable(ctx, d); err != nil {
+		log.Println("Destroying unreachable droplet:", d.Name)
+		if _, errDel := client.Droplets.Delete(context.TODO(), d.ID); errDel != nil {
+			log.Printf("Couldn't destroy droplet %s, please do so manually\n", d.Name)
+		}
 		return nil, err
 	}
 
@@ -82,6 +85,10 @@ func createDroplet(ctx context.Context, c *godo.Client, dcr *godo.DropletCreateR
 		_ = util.WaitForActive(ctx, c, action.HREF)
 		d, _, err = c.Droplets.Get(ctx, d.ID)
 		if err != nil {
+			log.Println("Failed waiting for droplet to become active, destroying it:", d.Name)
+			if _, err := c.Droplets.Delete(context.TODO(), d.ID); err != nil {
+				log.Println("Failed to destroy droplet, please do so manually:", d.Name)
+			}
 			return nil, err
 		}
 	}
@@ -95,7 +102,11 @@ type doInstance struct {
 }
 
 func (doi *doInstance) RunCmd(ctx context.Context, cmd string) error {
-	addr, err := doi.droplet.PublicIPv4()
+	return runCmd(ctx, cmd, doi.droplet)
+}
+
+func runCmd(ctx context.Context, cmd string, d *godo.Droplet) error {
+	addr, err := d.PublicIPv4()
 	if err != nil {
 		return err
 	}
@@ -110,9 +121,9 @@ func (doi *doInstance) RunCmd(ctx context.Context, cmd string) error {
 
 func (doi *doInstance) Destroy() error {
 	client := godo.NewFromToken(doi.apiToken)
-	ds := do.NewDropletsService(client)
+	_, err := client.Droplets.Delete(context.TODO(), doi.droplet.ID)
 
-	return ds.Delete(doi.droplet.ID)
+	return err
 }
 
 func (doi *doInstance) String() string {
@@ -124,37 +135,27 @@ const (
 	maxTries        = 10
 )
 
-// waitForReady checks the instance for SSH readiness with exponential backoff.
-func waitForReady(ctx context.Context, d *godo.Droplet) error {
+// waitForReachable checks the instance for SSH readiness with exponential backoff.
+func waitForReachable(ctx context.Context, d *godo.Droplet) error {
 	time.Sleep(5 * time.Second)
 	for i := 0.0; i < maxTries; i++ {
-		if isReady(d) {
+		if isReachable(d) {
 			return nil
 		}
-		backoff := time.Duration(math.Pow(2.0, i))
+		backoff := time.Duration(math.Pow(2.0, i)) * backoffModifier
+		log.Println(d.Name, "not yet reachable, trying again in", backoff)
 		select {
-		case <-time.After(backoff * backoffModifier): // 1s to 512s
+		case <-time.After(backoff): // 1s to 512s
 		case <-ctx.Done():
 			return ctx.Err()
 		}
 	}
-	return errors.New("not ready after configured timeout")
+	return errors.New("not reachable after configured timeout")
 }
 
-func isReady(d *godo.Droplet) bool {
-	addr, err := d.PublicIPv4()
-	if err != nil {
-		log.Println("addr is not available")
-		return false
-	}
-
-	err = <-sshRun("ls", addr)
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-
-	return true
+func isReachable(d *godo.Droplet) bool {
+	err := runCmd(context.TODO(), "ls", d)
+	return err == nil
 }
 
 func sshRun(cmd string, addr string) <-chan error {
@@ -182,5 +183,10 @@ func sshSession(addr string) (*ssh.Session, error) {
 		return nil, fmt.Errorf("can't establish client: %w", err)
 	}
 
-	return c.Session()
+	s, err := c.Session()
+	if err != nil {
+		return nil, fmt.Errorf("can't create session: %w", err)
+	}
+
+	return s, nil
 }
