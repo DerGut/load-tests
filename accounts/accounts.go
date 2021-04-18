@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"sort"
 )
 
 const (
@@ -21,12 +22,13 @@ const (
 	nsTo             = "pearup.*"
 )
 
-var ErrDumpTooSmall = errors.New("not enough accounts in dump")
+var ErrWrongDumpSize = errors.New("current dump has a different size than requested")
 
 func Generate(classConcurrency, classSize int, preparedPortion float64) error {
 	accounts := make([]Classroom, classConcurrency)
+	numToPrepare := NumPrepared(classConcurrency, preparedPortion)
 	for i := 0; i < classConcurrency; i++ {
-		prepare := i < int(float64(classConcurrency)*preparedPortion)
+		prepare := i < numToPrepare
 		accounts[i] = buildClassroom(classSize, i, prepare)
 	}
 
@@ -35,6 +37,10 @@ func Generate(classConcurrency, classSize int, preparedPortion float64) error {
 		panic(fmt.Errorf("failed to marshal accounts %v", err))
 	}
 	return ioutil.WriteFile(accountsFile, b, os.ModePerm)
+}
+
+func NumPrepared(classConcurrency int, preparedPortion float64) int {
+	return int(float64(classConcurrency) * preparedPortion)
 }
 
 func buildClassroom(classSize, classId int, isPrepared bool) Classroom {
@@ -62,25 +68,28 @@ func buildPupils(number, classId int) []Pupil {
 	return p
 }
 
-func Get(classes, size int) ([]Classroom, error) {
-	accounts, err := Read()
+func Get(classConcurrency, classSize int, preparedPortion float64) ([]Classroom, error) {
+	dump, err := Read()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(accounts) < classes {
-		return nil, fmt.Errorf("not enough classes: %w", ErrDumpTooSmall)
+	if len(dump) < classConcurrency {
+		return nil, fmt.Errorf("not enough classes: %w", ErrWrongDumpSize)
 	}
 
-	accounts = accounts[:classes]
-	for i, a := range accounts {
-		if len(a.Pupils) < size {
-			return nil, fmt.Errorf("not enough pupils per class: %w", ErrDumpTooSmall)
+	accounts, err := sizeDump(dump, classConcurrency, preparedPortion)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, a := range accounts {
+		if len(a.Pupils) != classSize {
+			return nil, fmt.Errorf("not enough pupils per class: %w", ErrWrongDumpSize)
 		}
-		accounts[i].Pupils = a.Pupils[:size]
 	}
 
-	return accounts, nil
+	return dump, nil
 }
 
 func Read() ([]Classroom, error) {
@@ -96,6 +105,28 @@ func Read() ([]Classroom, error) {
 	}
 
 	return c, err
+}
+
+func sizeDump(dump []Classroom, classConcurrency int, preparedPortion float64) ([]Classroom, error) {
+	numPreparedWanted := NumPrepared(classConcurrency, preparedPortion)
+
+	// Sort accounts from prepared to unprepared
+	sort.Slice(dump, func(i, j int) bool {
+		return dump[i].Prepared && !dump[j].Prepared
+	})
+
+	var accounts []Classroom
+	for i := 0; i < classConcurrency; i++ {
+		if i < numPreparedWanted && !dump[i].Prepared {
+			return nil, fmt.Errorf("not enough prepared accounts in dump: %w", ErrWrongDumpSize)
+		}
+		if i >= numPreparedWanted && dump[i].Prepared {
+			continue
+		}
+		accounts = append(accounts, dump[i])
+	}
+
+	return accounts, nil
 }
 
 func Restore(ctx context.Context, dbUri string, archivePath string) error {
