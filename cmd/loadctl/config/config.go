@@ -30,9 +30,9 @@ type Config struct {
 
 	Local            bool   `json:"local"`
 	ClassesPerRunner int    `json:"classesPerRunner"`
-	DoApiKey         string `json:"doApiKey"`
 	DdApiKey         string `json:"ddApiKey"`
-	DoRegion         string `json:"ddRegion"`
+	DoApiKey         string `json:"doApiKey"`
+	DoRegion         string `json:"doRegion"`
 	DoSize           string `json:"doSize"`
 }
 
@@ -174,7 +174,23 @@ func parseEnvVars() *Config {
 }
 
 func parseFlags() *Config {
-	c := &Config{}
+	c := &Config{
+		Url: url,
+
+		NoReset:         noReset,
+		DbUri:           dbUri,
+		LoadLevels:      loadLevels,
+		StepSize:        controller.StepSize{Duration: stepSize},
+		ClassSize:       classSize,
+		PreparedPortion: preparedPortion,
+
+		Local:            local,
+		ClassesPerRunner: classesPerRunner,
+		DoApiKey:         doApiKey,
+		DdApiKey:         ddApiKey,
+		DoRegion:         doRegion,
+		DoSize:           doSize,
+	}
 
 	return c
 }
