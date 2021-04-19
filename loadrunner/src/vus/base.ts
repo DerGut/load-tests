@@ -4,7 +4,7 @@ import { Logger } from "winston";
 import newLogger from "../logger";
 import statsd from "../statsd";
 
-export default class VirtualUser extends EventEmitter {
+export default abstract class VirtualUser extends EventEmitter {
     logger: Logger;
     context: BrowserContext;
     thinkTimeFactor: number;
@@ -19,6 +19,8 @@ export default class VirtualUser extends EventEmitter {
         this.logger = newLogger(id);
     }
 
+    abstract run(): Promise<void>;
+
     sessionActive(): boolean {
         return this.active;
     }
@@ -32,10 +34,6 @@ export default class VirtualUser extends EventEmitter {
         } finally {
             this.emit("stopped");
         }
-    }
-
-    async run() {
-        throw new Error("Abstract method");
     }
 
     async stop() {
