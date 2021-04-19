@@ -29,14 +29,16 @@ export default class LoadRunner extends EventEmitter {
     async start() {
         this.logger.info("Starting up")
         for (let i = 0; i < this.accounts.length; i++) {
-            this.logger.info("next classroom");
             const classroom = this.accounts[i];
             statsd.increment(CLASSES);
             if (classroom.prepared) {
-                const pupils = await this.startPreparedClassroom(classroom)
-                this.vus.push(...pupils);
+                this.logger.info("Starting prepared classroom");
+                const vus = await this.startPreparedClassroom(classroom)
+                this.vus.push(...vus);
             } else {
-                // promises.push(this.startNewClassroom(classroom));
+                this.logger.info("Starting new classroom");
+                const vus = await this.startNewClassroom(classroom);
+                this.vus.push(...vus);
             }
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
@@ -57,35 +59,48 @@ export default class LoadRunner extends EventEmitter {
 
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
         const vus: VirtualUser[] = [];
-        for (let i = 0; i < classroom.pupils.length; i++) {
-            const pupil = classroom.pupils[i];
-            const context = this.contexts.pop();
-            if (!context) {
-                throw new Error("Not enough contexts provided");
-            }
-            const vu = new VirtualPupil(context, pupil, {
-                pageUrl: this.url,
-                thinkTimeFactor: this.drawThinkTimeFactor()
-            });
-            this.handleVU(vu, context);
-            vu.start();
-            vus.push(vu);
-            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
-        }
 
-        const context = this.contexts.pop();
-        if (!context) {
-            throw new Error("Not enough contexts provided");
-        }
-        const vu = new VirtualTeacher(context, classroom.teacher, {
-            pageUrl: this.url,
-            thinkTimeFactor: this.drawThinkTimeFactor()
-        });
+        const context = this.getContext();
+        const vu = this.buildTeacher(context, classroom.teacher);
         this.handleVU(vu, context);
         vu.start();
         vus.push(vu);
 
+        for (let i = 0; i < classroom.pupils.length; i++) {
+            const pupil = classroom.pupils[i];
+
+            const context = this.getContext();
+            const vu = this.buildPupil(context, pupil);
+            this.handleVU(vu, context);
+            vu.start();
+            vus.push(vu);
+
+            await new Promise(resolve => setTimeout(resolve, 1 * 1000));
+        }
+
         return vus;
+    }
+
+    getContext(): BrowserContext {
+        const context = this.contexts.pop();
+        if (!context) {
+            throw new Error("Not enough contexts provided");
+        }
+        return context;
+    }
+
+    buildTeacher(context: BrowserContext, account: Teacher): VirtualTeacher {
+        return new VirtualTeacher(context, account, {
+            pageUrl: this.url,
+            thinkTimeFactor: this.drawThinkTimeFactor()
+        });
+    }
+
+    buildPupil(context: BrowserContext, account: Pupil): VirtualPupil {
+        return new VirtualPupil(context, account, {
+            pageUrl: this.url,
+            thinkTimeFactor: this.drawThinkTimeFactor()
+        });
     }
 
     async handleVU(vu: VirtualUser, context: BrowserContext) {
@@ -99,44 +114,42 @@ export default class LoadRunner extends EventEmitter {
         });
     }
 
-    // async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {
-    //     const classLog = new ClassLog(classroom.pupils.length);
-    //     const vus: VirtualUser[] = [];
-    //     for (let i = 0; i < classroom.pupils.length; i++) {
-    //         const pupil = classroom.pupils[i];
-    //         classLog.onClassCreated(async joinCode => {
-    //             const context = await this.browser.newContext();
-    //             const vu = new VirtualPupil(context, pupil, {
-    //                 pageUrl: joinUrl(this.url),
-    //                 joinCode,
-    //                 thinkTimeFactor: this.drawThinkTimeFactor()
-    //             });
-    //             vu.run();
-    //             resolve(vu);
-    //         });
-    //     }
-    //     promises.push(new Promise(async _ => {
-    //         const context = await this.browser.newContext();
-    //         const vu = new VirtualTeacher(context, classroom.teacher, {
-    //             pageUrl: this.url,
-    //             classLog: classLog,
-    //             className: classroom.name,
-    //             classSize: classroom.pupils.length,
-    //             thinkTimeFactor: this.drawThinkTimeFactor()
-    //         });
-    //         vu.run();
-    //         return vu;
-    //     }));
+    async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {
+        const vus: VirtualUser[] = [];
 
-    //     return Promise.all(promises);
-    // }
+        const classLog = new ClassLog(classroom.pupils.length);
+
+        const context = this.getContext();
+        const vu = new VirtualTeacher(context, classroom.teacher, {
+            pageUrl: this.url,
+            classLog: classLog,
+            className: classroom.name,
+            classSize: classroom.pupils.length,
+            thinkTimeFactor: this.drawThinkTimeFactor()
+        });
+        this.handleVU(vu, context);
+        vu.start();
+        vus.push(vu);
+
+        for (let i = 0; i < classroom.pupils.length; i++) {
+            const pupil = classroom.pupils[i];
+            classLog.onClassCreated(async joinCode => {
+                const context = this.getContext();
+                const vu = new VirtualPupil(context, pupil, {
+                    pageUrl: this.url,
+                    classCode: joinCode,
+                    thinkTimeFactor: this.drawThinkTimeFactor()
+                });
+                this.handleVU(vu, context);
+                vu.start();
+                vus.push(vu);
+            });
+        }
+
+        return vus;
+    }
 
     drawThinkTimeFactor(): number {
         return Math.random() + 0.5;
     }
-}
-
-
-function joinUrl(pageUrl: string): string {
-    return path.join(pageUrl, "/join");
 }
