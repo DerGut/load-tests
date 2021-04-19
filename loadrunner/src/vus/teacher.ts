@@ -8,6 +8,9 @@ export default class VirtualTeacher extends VirtualUser {
     config: Config;
     constructor(context: BrowserContext, account: Teacher, config: Config) {
         super(context, account.email, config.thinkTimeFactor);
+        if (config.classSize && (config.classSize < 2 || config.classSize > 40)) {
+            throw new Error("Class size needs to be between 2 and 40 (inclusive)");
+        }
         this.account = account;
         this.config = config;
     }
@@ -21,8 +24,17 @@ export default class VirtualTeacher extends VirtualUser {
         let loggedIn = false;
         while (!loggedIn && this.sessionActive()) {
             try {
+                // TODO: after refresh, the account could have been created but the login failed
+                // retry individually?
+                if (this.config.classLog) {
+                    console.log("Signing up");
+                    await this.signUp(page, this.account.email, this.account.password);
+        
+                    // Teacher currently needs to login after signup due to a bug https://github.com/ohmeingott/PearUp/issues/3806
+                    // The bug has been fixed but I don't want to update the branch at this point.
+                }
                 this.logger.info("Logging into account");
-                await this.login(page);
+                await this.loginExistingAccount(page, this.account.email, this.account.password);
                 loggedIn = true;
             } catch (e) {
                 if (!this.sessionActive()) {
@@ -39,19 +51,18 @@ export default class VirtualTeacher extends VirtualUser {
 
         this.logger.info("Logged in");
 
-        await this.teach(page);
-    }
-
-    async login(page: Page) {
         if (this.config.classLog) {
-            // console.log("Creating class");
-            // const joinCode = await this.createClass(page);
-            // this.config.classLog.addClass(joinCode);
-            // await this.think();
-            throw new Error("class creation not implemented yet");
-        } else {
-            await this.loginExistingAccount(page);
+            if (!this.config.className || !this.config.classSize) {
+                throw new Error("className and classSize should be provided for new class creation");
+            }
+            console.log("Creating class");
+            const classCode = await this.createClass(page, this.config.className, this.config.classSize);
+            this.config.classLog.addClass(classCode);
+
+            await this.addUnits(page);
         }
+        
+        await this.teach(page);
     }
 
     async teach(page: Page) {
@@ -83,6 +94,39 @@ export default class VirtualTeacher extends VirtualUser {
         }
     }
 
+    async signUp(page: Page, email: string, password: string) {
+        await page.click("button:has-text('Registrieren')");
+        await page.click("text='als Lehrer:in'");
+        const typeDelay = 100;
+        await page.type("[placeholder='Email']", email, { delay: typeDelay });
+        await page.type("[placeholder='Passwort']", password, { delay: typeDelay });
+        await page.type("[placeholder='Passwort wiederholen']", password, { delay: typeDelay });
+        await page.click("label.checkbox:nth-of-type(2)");
+        await page.click("#skipDsgvoButton");
+        await page.click("#acceptDsgvoButton");
+
+        await page.click("button:has-text('Bereit?')");
+
+        await solveCaptcha();
+        
+        async function solveCaptcha() {
+            const haveFun = await page.waitForSelector("[data-id=haveFun]");
+            const source = await haveFun.boundingBox();
+            if (!source) {
+                throw new Error();
+            }
+            const whilePlaying = await page.waitForSelector("[data-id=whilePlaying]");
+            const target = await whilePlaying.boundingBox();
+            if (!target) {
+                throw new Error();
+            }
+            await page.mouse.move(source?.x + source?.width / 2, source?.y + source?.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(target?.x + target?.width / 2, target?.y + target?.height / 2);
+            await page.mouse.up();
+        }
+    }
+
     async grade(page: Page) {
         const next = await Promise.race([
             page.waitForSelector("#teacherWorkspaceArea"),
@@ -97,7 +141,7 @@ export default class VirtualTeacher extends VirtualUser {
     }
 
     // TODO: move to base
-    async loginExistingAccount(page: Page) {
+    async loginExistingAccount(page: Page, email: string, password: string) {
         await this.think();
 
         await this.time("login_click", async () => {
@@ -105,9 +149,9 @@ export default class VirtualTeacher extends VirtualUser {
         });
 
         // type with some delay because PearUp checks asynchronously, whether the username exists
-        const typeDelay = 200;
-        await page.type("[placeholder='Nutzername/Email']", this.account.email, { delay: typeDelay });
-        await page.type("[placeholder='Passwort']", this.account.password, { delay: typeDelay });
+        const typeDelay = 100;
+        await page.type("[placeholder='Nutzername/Email']", email, { delay: typeDelay });
+        await page.type("[placeholder='Passwort']", password, { delay: typeDelay });
 
         await this.time("login", async () => {
             await page.click("button:has-text('Einloggen')");
@@ -124,5 +168,38 @@ export default class VirtualTeacher extends VirtualUser {
         await this.think();
     }
 
-    async createClass(page: Page): Promise<string> { return ""; }
+    async createClass(page: Page, name: string, size: number): Promise<string> { 
+        await page.click('button:has-text("Klasse erstellen")');
+
+        await page.fill("[placeholder='Klassenname']", name);
+        await page.click("div[name=grade]");
+        await page.click("div[name=grade] [role=option]:has-text('6')");
+        await page.click("div[name=count]");
+        await page.click(`div[name=count] [role=option]:has-text('${size}')`);
+
+        await page.click("button[type=submit]");
+
+        const codeElem = await page.waitForSelector(".classCode h1");
+        const code = await codeElem.textContent();
+        if (!code) {
+            throw new Error("No class code found");
+        }
+        
+        return code.trim();
+    }
+
+    async addUnits(page: Page) {
+        await page.click(".customDropdown:has-text('Vorbereiten')");
+        await page.click("h4:has-text('Material')");
+
+        const units = ["aiImpact", "aiIntro", "mlIntro", "mlPrincipals"];
+        for (let i = 0; i < units.length; i++) {
+            await page.click(`#${units[i]}`);
+            await page.click("button:has-text('Zur Klasse hinzufügen')");
+            await this.think();
+            await this.think();
+        }
+
+        await page.click("a:has-text('Home')");
+    }
 }
