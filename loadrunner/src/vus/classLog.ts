@@ -8,11 +8,11 @@ export default class ClassLog extends EventEmitter {
         super.setMaxListeners(classSize);
     }
 
-    addClass(joinCode: string) {
-        super.emit(ClassCreated, joinCode);
+    addClass(classCode: string) {
+        super.emit(ClassCreated, classCode);
     }
 
-    onClassCreated(cb: (joinCode: string) => void) {
+    onClassCreated(cb: (classCode: string) => void) {
         super.on(ClassCreated, cb);
     }
 }

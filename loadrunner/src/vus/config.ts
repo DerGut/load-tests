@@ -6,6 +6,6 @@ export type Config = {
 
     className?: string
     classSize?: number
-    joinCode?: string
+    classCode?: string
     classLog?: ClassLog
 };
