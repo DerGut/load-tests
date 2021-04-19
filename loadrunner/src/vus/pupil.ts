@@ -21,7 +21,7 @@ export default class VirtualPupil extends VirtualUser {
         this.config = config;
     }
 
-    async run(): Promise<void> {
+    async run() {
         await this.think();
         const page = await this.context.newPage();
         await this.think();
@@ -94,11 +94,34 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async login(page: Page) {
-        if (this.config.joinCode) {
-            throw new Error("class join not implemented yet");
+        if (this.config.classCode) {
+            await page.fill("[placeholder=Klassencode]", this.config.classCode);
+            await page.click("button:has-text('Los')");
+            await this.register(page, this.account.username, this.account.password);
+            await this.createCompany(page, this.account.company);
         } else {
             await this.loginExistingAccount(page);
         }
+    }
+
+    async register(page: Page, username: string, password: string) {
+        const typeDelay = 200;
+        await page.type("[placeholder='Benutzername']", username, { delay: typeDelay });
+        await page.type("[placeholder='Passwort']:nth-of-type(1)", password, { delay: typeDelay });
+        await page.type("[placeholder='Passwort wiederholen'],[placeholder='Passwort']:nth-of-type(2)", password, { delay: typeDelay });
+        
+        await this.time("register", async () => {
+            await page.click("button:has-text('Bereit?')");
+            await page.waitForSelector(`text='Hallo ${username}!'`);
+        })
+    }
+
+    async createCompany(page: Page, name: string) {
+        await page.fill(".foundCompany__input input", name);
+        await this.time("company", async () => {
+            await page.click("button:has-text('Los geht')");
+            await page.waitForSelector("text='Übersicht'");
+        })
     }
 
     async loginExistingAccount(page: Page) {
@@ -269,7 +292,7 @@ class TaskSeries {
 }
 
 
-class Exercise {
+abstract class Exercise {
     page: Page;
     handle: ElementHandle;
     avgWorkDurationSec: number = -1;
@@ -277,6 +300,8 @@ class Exercise {
         this.page = page;
         this.handle = exerciseHandle;
     }
+
+    abstract submit(): Promise<boolean>;
 
     // Waits between (avgWorkDurationSec/4) and (6*avgWorkDurationSec/4)
     async think(thinkTimeFactor: number) {
@@ -289,8 +314,6 @@ class Exercise {
     async work(thinkTimeFactor: number) {
         await this.think(thinkTimeFactor);
     }
-
-    async submit(): Promise<boolean> { throw new Error("Abstract") }
 
     async maybeDismissWrongAnswerModal() {
         await think(2);
