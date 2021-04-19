@@ -14,5 +14,5 @@ interface Teacher {
 interface Pupil {
     username: string;
     password: string;
-    companyName: string;
+    company: string;
 }
