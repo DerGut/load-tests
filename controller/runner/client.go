@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"sync/atomic"
 	"time"
 
 	"github.com/DerGut/load-tests/accounts"
@@ -25,7 +26,7 @@ const (
 	runnerImage = "jsteinmann/load-tests-runner:latest"
 )
 
-var runnerCounter = 0
+var runnerCounter int32 = 0
 
 type Client interface {
 	Start(context.Context, *Step, provisioner.Provisioner) error
@@ -33,10 +34,10 @@ type Client interface {
 }
 
 func NewRemote(runID, ddApiKey string) Client {
-	runnerCounter += 1
+	currentCounter := atomic.AddInt32(&runnerCounter, 1)
 	return &RemoteClient{
 		runID:    runID,
-		name:     fmt.Sprintf("%s-%d", runID, runnerCounter),
+		name:     fmt.Sprintf("%s-%d", runID, currentCounter),
 		ddApiKey: ddApiKey,
 	}
 }
