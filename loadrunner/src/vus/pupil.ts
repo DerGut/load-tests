@@ -19,8 +19,11 @@ export default class VirtualPupil extends VirtualUser {
         const page = await this.context.newPage();
         await this.think();
         await this.think();
-        // TODO: await?
-        await this.retryRefreshing(page, () => page.goto(this.config.pageUrl));
+
+        await this.retryRefreshing(page, async () => {
+            this.logger.info(`Visiting ${this.config.pageUrl}`);
+            await page.goto(this.config.pageUrl)
+        });
         await this.think();
 
         await this.retryRefreshing(page, async () => {
@@ -28,17 +31,21 @@ export default class VirtualPupil extends VirtualUser {
             await this.login(page);
         });
 
-        await this.retryRefreshing(page, () => this.play(page));
+        await this.retryRefreshing(page, async () => {
+            this.logger.info("Starting to play");
+            await this.play(page);
+        });
     }
 
     async play(page: Page) {
         while (this.sessionActive()) {
-            this.logger.info("Continuing doing stuff");
             await this.think();
 
             if (await page.$("button:has-text('Zum Arbeitsplatz')")) {
+                this.logger.info("Back to workplace");
                 await page.click("button:has-text('Zum Arbeitsplatz')");
             } else {
+                this.logger.info("Accepting taskseries");
                 this.time("taskseries_accept", async () => {
                     await page.click("text=Annehmen");
                     await page.waitForSelector("#taskSeries");
@@ -185,6 +192,7 @@ class TaskSeries {
 
         while (this.sessionActive() && !await this.page.$(".taskSeries__submitButton")) {
             if (Math.random() < 0.1) {
+                this.logger.info("Sending chat message");
                 await this.sendChatMessage(this.page);
             }
             await think(2 * thinkTimeFactor);
@@ -201,6 +209,7 @@ class TaskSeries {
                         done = await exercise.submit();
                     })
                 } while (!done);
+                this.logger.info("Submitted exercise");
                 statsd.increment(EXERCISES_SUBMITTED);
 
                 await think(2 * thinkTimeFactor);
@@ -212,6 +221,7 @@ class TaskSeries {
 
         await think(2 * thinkTimeFactor);
 
+        this.logger.info("Submitting task series");
         await this.time("taskseries_submit", async () => {
             await this.page.click(".taskSeries__submitButton");
             await this.page.waitForSelector("text='Aufträge'");
@@ -237,7 +247,7 @@ class TaskSeries {
         });
 
         const id = await next.getAttribute("id");
-        this.logger.info(`Working on exercise ${id}`)
+        this.logger.info(`Next exercise: ${id}`);
         
         switch (type) {
             case "freeText":
