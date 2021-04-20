@@ -2,7 +2,7 @@ import { BrowserContext, Page } from "playwright-chromium";
 
 import { Config } from "./config";
 import VirtualUser from "./base";
-import statsd, { TASKSERIES_SUBMITTED } from "../statsd";
+import statsd, { EXERCISES_SUBMITTED, TASKSERIES_SUBMITTED } from "../statsd";
 import { TaskSeries } from "./pageObjects/TaskSeries";
 
 export default class VirtualPupil extends VirtualUser {
@@ -53,7 +53,43 @@ export default class VirtualPupil extends VirtualUser {
             }
 
             const taskSeries = new TaskSeries(this.logger, page, this.time.bind(this), this.sessionActive.bind(this));
-            await taskSeries.work(this.config.thinkTimeFactor);
+            
+            let heading;
+            // This is not synchronous with the server. measure it for reference
+            this.time("taskseries_heading", async () => {
+                heading = await taskSeries.getHeading();
+            });
+            this.logger.info(`Started taskSeries "${heading}"`);
+
+            while (this.sessionActive() && !(await taskSeries.finished())) {
+                if (Math.random() < 0.1) {
+                    this.logger.info("Sending chat message");
+                    await this.sendChatMessage(page);
+                }
+                await this.think();
+                if (!await taskSeries.canProceed()) {
+                    const exercise = await taskSeries.nextExercise();
+                    await exercise.work(this.thinkTimeFactor);
+                    let done;
+                    do {
+                        await this.time("exercise_submit", async () => {
+                            done = await exercise.submit();
+                        });
+                    } while (!done);
+                    this.logger.info("Submitted exercise");
+                    statsd.increment(EXERCISES_SUBMITTED);
+
+                    await this.think();
+                }
+                await taskSeries.proceed();
+                await this.think();
+            }
+
+            this.logger.info("Submitting task series");
+            await this.time("taskseries_submit", async () => {
+                await taskSeries.submit();
+            });
+            
             await page.click("button:has-text('OK')"); // dismiss modal
             statsd.increment(TASKSERIES_SUBMITTED);
             if (await this.investmentAvailable(page)) {
@@ -165,6 +201,14 @@ export default class VirtualPupil extends VirtualUser {
             await page.click("text='Frage stellen!'");
             await page.click("text=minimieren"); // TODO: notwendig?
         }
+    }
+
+    async sendChatMessage(page: Page) {
+        await page.click("a:has-text('Nachrichten')");
+        await page.fill(".chat textarea", "asdfghjkl");
+        await page.click(".chat button");
+        await page.click("a:has-text('Nachrichten')");
+        // TODO: Feedback erhalten (>gehe zur Aufgabe<) erscheint in Chat
     }
 }
 
