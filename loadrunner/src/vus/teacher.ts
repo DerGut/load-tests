@@ -21,21 +21,19 @@ export default class VirtualTeacher extends VirtualUser {
         await this.think();
         await page.goto(this.config.pageUrl);
 
-        await this.retryRefreshing(page, async () => {
-            // TODO: after refresh, the account could have been created but the login failed
-            // retry individually?
-            if (this.config.classLog) {
-                console.log("Signing up");
+        if (this.config.classLog) {
+            await this.retryRefreshing(page, async () => {
+                this.logger.info("Signing up");
                 await this.signUp(page, this.account.email, this.account.password);
-    
-                // Teacher currently needs to login after signup due to a bug https://github.com/ohmeingott/PearUp/issues/3806
-                // The bug has been fixed but I don't want to update the branch at this point.
-            }
+            });
+        }
+
+        // Teacher currently also needs to login after signup due to a bug https://github.com/ohmeingott/PearUp/issues/3806
+        // The bug has been fixed but I don't want to update the branch at this point.
+        await this.retryRefreshing(page, async () => {
             this.logger.info("Logging into account");
             await this.loginExistingAccount(page, this.account.email, this.account.password);
         });
-
-        this.logger.info("Logged in");
 
         if (this.config.classLog) {
             if (!this.config.className || !this.config.classSize) {
