@@ -4,7 +4,7 @@ import { Config } from "./config";
 import VirtualUser from "./base";
 import statsd, { EXERCISES_SUBMITTED, TASKSERIES_SUBMITTED } from "../statsd";
 import { Logger } from "winston";
-import { FreeText, InputField, MultipleChoice, Survey } from "./exercises";
+import { FreeText, InputField, MultipleChoice, Survey } from "./pageObjects/exercises";
 
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;

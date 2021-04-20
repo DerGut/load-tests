@@ -1,6 +1,6 @@
 import { ElementHandle, Page } from "playwright-chromium";
 import { Logger } from "winston";
-import { think } from "./pupil";
+import { think } from "../pupil";
 
 export abstract class Exercise {
     logger: Logger;
