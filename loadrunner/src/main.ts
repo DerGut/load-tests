@@ -39,6 +39,7 @@ import fs from "fs/promises";
                 }
             }
         },
+        handleSIGINT: false,
         handleSIGTERM: false
     });
     const contexts = (await Promise.all(
@@ -60,9 +61,14 @@ import fs from "fs/promises";
         statsd.decrement(CLASSES, accounts.length);
         await browser.close();
     });
+    process.once("SIGINT", async () => {
+        rootLogger.info("Received SIGINT, stopping runner.");
+        lr.on("stopped", async () => process.exit(130));
+        lr.stop();
+    });
     process.once("SIGTERM", async () => {
         rootLogger.info("Received SIGTERM, stopping runner.");
-        lr.on("stopped", async () => process.exit(130));
+        lr.on("stopped", async () => process.exit(143));
         lr.stop();
     });
     process.once("exit", () => rootLogger.info("Exiting"));
