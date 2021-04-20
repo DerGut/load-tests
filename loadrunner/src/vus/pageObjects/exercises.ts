@@ -142,8 +142,15 @@ export class MultipleChoice extends Exercise {
     }
 
     async submit(): Promise<boolean> {
-        const submit = await this.handle.waitForSelector("button:has-text('Überprüfen')");
-        await submit.click();
+        try {
+            const submit = await this.handle.waitForSelector("button:has-text('Überprüfen')");
+            await submit.click();
+        } catch (e) {
+            if (e !instanceof TypeError) {
+                await this.page.screenshot({ path: `errors/${this.logger.name}.png` });
+            }
+            throw e;
+        }
 
         return await this.evaluation();
     }

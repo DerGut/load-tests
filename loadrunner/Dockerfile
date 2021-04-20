@@ -21,4 +21,6 @@ RUN npm ci
 USER pwuser
 COPY --from=builder /builder/built/ built/
 
+VOLUME [ "errors/" ]
+
 CMD ["node", "built/main.js"]
