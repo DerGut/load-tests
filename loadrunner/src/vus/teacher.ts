@@ -21,33 +21,19 @@ export default class VirtualTeacher extends VirtualUser {
         await this.think();
         await page.goto(this.config.pageUrl);
 
-        let loggedIn = false;
-        while (!loggedIn && this.sessionActive()) {
-            try {
-                // TODO: after refresh, the account could have been created but the login failed
-                // retry individually?
-                if (this.config.classLog) {
-                    console.log("Signing up");
-                    await this.signUp(page, this.account.email, this.account.password);
-        
-                    // Teacher currently needs to login after signup due to a bug https://github.com/ohmeingott/PearUp/issues/3806
-                    // The bug has been fixed but I don't want to update the branch at this point.
-                }
-                this.logger.info("Logging into account");
-                await this.loginExistingAccount(page, this.account.email, this.account.password);
-                loggedIn = true;
-            } catch (e) {
-                if (!this.sessionActive()) {
-                    return;
-                } else if (e instanceof errors.TimeoutError) {
-                    this.logger.error("Refreshing and logging in again", e);
-                    statsd.increment(ERRORS);
-                    await page.reload();
-                } else {
-                    throw e;
-                }
+        await this.retryRefreshing(page, async () => {
+            // TODO: after refresh, the account could have been created but the login failed
+            // retry individually?
+            if (this.config.classLog) {
+                console.log("Signing up");
+                await this.signUp(page, this.account.email, this.account.password);
+    
+                // Teacher currently needs to login after signup due to a bug https://github.com/ohmeingott/PearUp/issues/3806
+                // The bug has been fixed but I don't want to update the branch at this point.
             }
-        }
+            this.logger.info("Logging into account");
+            await this.loginExistingAccount(page, this.account.email, this.account.password);
+        });
 
         this.logger.info("Logged in");
 
@@ -67,31 +53,19 @@ export default class VirtualTeacher extends VirtualUser {
 
     async teach(page: Page) {
         let alternate = 0;
-        while (this.sessionActive()) {
-            try {
-                await page.click("text='Unterrichten'");
-                if (alternate % 2 == 0) {
-                    await page.click("h4:has-text('Arbeitsplatz')");
-                    await this.grade(page);
-                } else {
-                    await page.click("h4:has-text('Klassenraum')");
-                    console.log("skip");
-                }
-                alternate++;
-                await this.think();
-                await this.think();
-            } catch (e) {
-                if (!this.sessionActive()) {
-                    return;
-                } else if (e instanceof errors.TimeoutError) {
-                    this.logger.error("Refreshing and logging in again", e);
-                    statsd.increment(ERRORS);
-                    await page.reload();
-                } else {
-                    throw e;
-                }
+        await this.retryRefreshing(page, async () => {
+            await page.click("text='Unterrichten'");
+            if (alternate % 2 == 0) {
+                await page.click("h4:has-text('Arbeitsplatz')");
+                await this.grade(page);
+            } else {
+                await page.click("h4:has-text('Klassenraum')");
+                console.log("skip");
             }
-        }
+            alternate++;
+            await this.think();
+            await this.think();
+        });
     }
 
     async signUp(page: Page, email: string, password: string) {
