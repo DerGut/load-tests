@@ -1,7 +1,4 @@
-import path from "path";
-import v8 from "v8";
-
-import { Browser, BrowserContext } from "playwright-chromium";
+import { BrowserContext } from "playwright-chromium";
 
 import ClassLog from "./vus/classLog";
 import VirtualPupil from "./vus/pupil";
@@ -110,7 +107,11 @@ export default class LoadRunner extends EventEmitter {
         });
         vu.on("stopped", async () => {
             statsd.decrement(VUS);
-            await context.close();
+            try {
+                await context.close();
+            } catch(e) {
+                this.logger.warning("Context was already closed", e)
+            }
         });
     }
 
