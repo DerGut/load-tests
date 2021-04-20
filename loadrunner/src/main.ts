@@ -39,7 +39,8 @@ import fs from "fs/promises";
                 }
             }
         },
-        handleSIGINT: false
+        handleSIGINT: false,
+        handleSIGTERM: false
     });
     const contexts = (await Promise.all(
         accounts.map(createContextsForClass))
