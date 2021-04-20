@@ -37,6 +37,11 @@ func main() {
 		c = controller.NewRemote(runID(), p, conf.DdApiKey)
 	}
 
+	// TODO: test duration should not start before first runner has been deployed
+	// also +1 step should not be necessary, we should stop after exactly n steps
+	// graceful shutdown could be handled on top of this.
+	// perhaps contexts aren't the right tool for this?
+	// good enough for BA anyway?
 	// Wait one step size longer for graceful shutdown
 	timeout := time.Duration(len(conf.LoadLevels)+1) * conf.StepSize.Duration
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
