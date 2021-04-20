@@ -1,16 +1,9 @@
-import { BrowserContext, ElementHandle, errors, Page } from "playwright-chromium";
+import { BrowserContext, ElementHandle, Page } from "playwright-chromium";
 
 import { Config } from "./config";
 import VirtualUser from "./base";
-import statsd, { ERRORS, EXERCISES_SUBMITTED, TASKSERIES_SUBMITTED } from "../statsd";
-
-const selectors = {
-    SUBMIT_TASK_SERIES: "button:has-text('Abgeben')",
-    SUBMIT_EXERCISE: "button:has-text('Überprüfen')",
-    FREE_TEXT: "button:has-text('Überprüfen')",
-    PROCEED_EXERCISE: "button:has-text('Weiter')",
-    EXERCISE_BUTTONS: ".exercise__buttons"
-}
+import statsd, { EXERCISES_SUBMITTED, TASKSERIES_SUBMITTED } from "../statsd";
+import { Logger } from "winston";
 
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;
@@ -26,44 +19,16 @@ export default class VirtualPupil extends VirtualUser {
         const page = await this.context.newPage();
         await this.think();
         await this.think();
-        // TODO: retry this too
-        await page.goto(this.config.pageUrl);
+        // TODO: await?
+        await this.retryRefreshing(page, () => page.goto(this.config.pageUrl));
         await this.think();
 
-        let loggedIn = false;
-        while (!loggedIn && this.sessionActive()) {
-            try {
-                this.logger.info("Logging into account");
-                await this.login(page);
-                loggedIn = true;
-            } catch (e) {
-                if (!this.sessionActive()) {
-                    return;
-                } else if (e instanceof errors.TimeoutError) {
-                    this.logger.error("Refreshing and logging in again", e);
-                    statsd.increment(ERRORS);
-                    await page.reload();
-                } else {
-                    throw e;
-                }
-            }
-        }
+        await this.retryRefreshing(page, async () => {
+            this.logger.info("Logging into account");
+            await this.login(page);
+        });
 
-        while (this.sessionActive()) {
-            try {
-                await this.play(page);
-            } catch (e) {
-                if (!this.sessionActive()) {
-                    return;
-                } else if (e instanceof errors.TimeoutError) {
-                    this.logger.error("Refreshing and continuing to play", e);
-                    statsd.increment(ERRORS);
-                    await page.reload();
-                } else {
-                    throw e;
-                }
-            }
-        }
+        await this.retryRefreshing(page, () => this.play(page));
     }
 
     async play(page: Page) {
@@ -80,7 +45,7 @@ export default class VirtualPupil extends VirtualUser {
                 });
             }
 
-            const taskSeries = new TaskSeries(page, this.time.bind(this), this.sessionActive.bind(this));
+            const taskSeries = new TaskSeries(this.logger, page, this.time.bind(this), this.sessionActive.bind(this));
             await taskSeries.work(this.config.thinkTimeFactor);
             await page.click("button:has-text('OK')"); // dismiss modal
             statsd.increment(TASKSERIES_SUBMITTED);
@@ -197,10 +162,12 @@ export default class VirtualPupil extends VirtualUser {
 }
 
 class TaskSeries {
+    logger: Logger;
     page: Page;
     time: Function;
     sessionActive: () => boolean;
-    constructor(page: Page, timeFunction: Function, sessionActive: () => boolean) {
+    constructor(logger: Logger, page: Page, timeFunction: Function, sessionActive: () => boolean) {
+        this.logger = logger;
         this.page = page;
         this.time = timeFunction;
         this.sessionActive = sessionActive;
@@ -214,7 +181,7 @@ class TaskSeries {
             heading = await taskSeries.innerText();
         });
         
-        console.log(`Started taskSeries "${heading}"`);
+        this.logger.info(`Started taskSeries "${heading}"`);
 
         while (this.sessionActive() && !await this.page.$(".taskSeries__submitButton")) {
             if (Math.random() < 0.1) {
@@ -239,7 +206,7 @@ class TaskSeries {
                 await think(2 * thinkTimeFactor);
             }
 
-            const next = await this.page.waitForSelector(selectors.PROCEED_EXERCISE);
+            const next = await this.page.waitForSelector("button:has-text('Weiter')");
             await next.click();
         }
 
@@ -253,6 +220,7 @@ class TaskSeries {
 
     async nextExercise() {
         const next = await this.time("exercise_next", async () => {
+            // TODO: wait for multiple?
             const exercises = await this.page.$$(".exercise");
             return exercises.pop();
         });
@@ -267,16 +235,19 @@ class TaskSeries {
     
             return await body.getAttribute("class");
         });
+
+        const id = await next.getAttribute("id");
+        this.logger.info(`Working on exercise ${id}`)
         
         switch (type) {
             case "freeText":
-                return new FreeText(next, this.page);
+                return new FreeText(this.logger, this.page, next);
             case "survey":
-                return new Survey(next, this.page);
+                return new Survey(this.logger, this.page, next);
             case "multipleChoice":
-                return new MultipleChoice(next, this.page);
+                return new MultipleChoice(this.logger, this.page, next);
             case "input__Field":
-                return new InputField(next, this.page);
+                return new InputField(this.logger, this.page, next);
             default:
                 throw new Error(`Exercise type "${type}" not implemented`);
         }
@@ -293,10 +264,12 @@ class TaskSeries {
 
 
 abstract class Exercise {
+    logger: Logger;
     page: Page;
     handle: ElementHandle;
     avgWorkDurationSec: number = -1;
-    constructor(exerciseHandle: ElementHandle, page: Page) {
+    constructor(logger: Logger, page: Page, exerciseHandle: ElementHandle) {
+        this.logger = logger;
         this.page = page;
         this.handle = exerciseHandle;
     }
@@ -307,7 +280,7 @@ abstract class Exercise {
     async think(thinkTimeFactor: number) {
         const rand = Math.random() + 0.5;
         const thinkTime = thinkTimeFactor * rand * this.avgWorkDurationSec;
-        console.log(`thinking ${thinkTime}sec`);
+        this.logger.info(`thinking ${thinkTime}sec`);
         await think(thinkTime);
     }
 

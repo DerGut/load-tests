@@ -1,8 +1,8 @@
 import EventEmitter from "events";
-import { BrowserContext } from "playwright-chromium";
+import { BrowserContext, errors, Page } from "playwright-chromium";
 import { Logger } from "winston";
 import newLogger from "../logger";
-import statsd from "../statsd";
+import statsd, { ERRORS } from "../statsd";
 
 export default abstract class VirtualUser extends EventEmitter {
     logger: Logger;
@@ -51,5 +51,25 @@ export default abstract class VirtualUser extends EventEmitter {
     async time(label: string, fn: () => Promise<any>): Promise<any> {
         const intrumented = statsd.asyncDistTimer(fn, label);
         return await intrumented();
+    }
+
+    async retryRefreshing<T>(page: Page, fn: () => Promise<T>): Promise<T> {
+        while (this.sessionActive()) {
+            try {
+                return await fn();
+            } catch (e) {
+                if (!this.sessionActive()) {
+                    return Promise.reject(e);
+                } else if (e instanceof errors.TimeoutError) {
+                    this.logger.error("Refreshing and trying again", e);
+                    statsd.increment(ERRORS);
+                    await page.reload();
+                } else {
+                    throw e;
+                }
+            }
+        }
+        
+        return Promise.reject();
     }
 }
