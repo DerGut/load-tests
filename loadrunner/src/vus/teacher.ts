@@ -131,7 +131,6 @@ export default class VirtualTeacher extends VirtualUser {
                 page.waitForSelector("text='Home'")
             ]);
             const text = await result.textContent();
-            this.logger.info(text);
             if (!text || text.trim() !== "Home") {
                 throw new Error("Login failed");
             }
