@@ -111,22 +111,22 @@ var (
 func init() {
 	flag.StringVar(&configFile, "config", "", "Path to a json config file.")
 
-	flag.StringVar(&url, "url", "https://beta.pearup.de", "The URL to the system under test.")
+	flag.StringVar(&url, "url", "", "The URL to the system under test.")
 
 	flag.BoolVar(&noReset, "noReset", false, "Whether to skip the reset of the mongo instance.")
 	flag.StringVar(&dbUri, "dbUri", "", "The URI to the mongo instance.")
 
 	flag.Var(&loadLevels, "loadLevels", "A comma-separated list of class concurrencies.")
-	flag.DurationVar(&stepSize, "stepSize", 15*time.Minute, "time between each step of the load curve.")
-	flag.IntVar(&classSize, "classSize", 30, "The number of pupils within a class.")
+	flag.DurationVar(&stepSize, "stepSize", 0, "time between each step of the load curve.")
+	flag.IntVar(&classSize, "classSize", 0, "The number of pupils within a class.")
 	flag.Float64Var(&preparedPortion, "preparedPortion", 0, "The portion of classes for which accounts should be created beforehand.")
 
 	flag.BoolVar(&local, "local", false, "If true, the tests will be run locally.")
-	flag.IntVar(&classesPerRunner, "classesPerRunner", 1, "The number of classes managed by a single runner instance.")
+	flag.IntVar(&classesPerRunner, "classesPerRunner", 0, "The number of classes managed by a single runner instance.")
 	flag.StringVar(&doApiKey, "doApiKey", "", "The API key for digital ocean.")
 	flag.StringVar(&ddApiKey, "ddApiKey", "", "The API key for datadog.")
-	flag.StringVar(&doRegion, "doRegion", "fra1", "The region to provision the runner instances in.")
-	flag.StringVar(&doSize, "doSize", "m-2vcpu-16gb", "The size of the runner instances to provision.")
+	flag.StringVar(&doRegion, "doRegion", "", "The region to provision the runner instances in.")
+	flag.StringVar(&doSize, "doSize", "", "The size of the runner instances to provision.")
 
 	flag.Parse()
 }
