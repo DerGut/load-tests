@@ -38,7 +38,7 @@ export class TaskSeries {
 
     async nextExercise(): Promise<Exercise> {
         const next = await this.time("exercise_next", async () => {
-            // TODO: wait for multiple?
+            await this.page.waitForSelector(".exercise");
             const exercises = await this.page.$$(".exercise");
             return exercises.pop();
         });
