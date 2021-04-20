@@ -1,7 +1,6 @@
-import { BrowserContext, errors, Page } from "playwright-chromium";
+import { BrowserContext, Page } from "playwright-chromium";
 import { Config } from "./config";
 import VirtualUser from "./base";
-import statsd, { ERRORS } from "../statsd";
 
 export default class VirtualTeacher extends VirtualUser {
     account: Teacher;
