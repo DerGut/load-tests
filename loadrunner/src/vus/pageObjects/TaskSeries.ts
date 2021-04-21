@@ -42,7 +42,7 @@ export class TaskSeries {
 
     async nextExercise(): Promise<Exercise> {
         this.exerciseIndex++;
-        const exerciseSelector = `.exercise:nth-of-type(${this.exerciseIndex})`;
+        const exerciseSelector = `:nth-match(.exercise, ${this.exerciseIndex})`;
 
         const id = await this.page.getAttribute(exerciseSelector, "id");
         this.logger.info(`Next exercise: ${id}`);
