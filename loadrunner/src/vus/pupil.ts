@@ -65,7 +65,7 @@ export default class VirtualPupil extends VirtualUser {
                 });
             }
 
-            const taskSeries = new TaskSeries(this.logger, page, this.time.bind(this), this.sessionActive.bind(this));
+            const taskSeries = new TaskSeries(this.logger, page, this.account.username, this.time.bind(this), this.sessionActive.bind(this));
             
             let heading;
             // This is not synchronous with the server. measure it for reference
