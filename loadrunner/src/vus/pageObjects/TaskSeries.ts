@@ -10,7 +10,7 @@ export class TaskSeries {
     pupilId: string;
     time: timeFunctionType;
     sessionActive: () => boolean;
-    exerciseIndex: number = 1;
+    exerciseIndex: number = 0;
     constructor(logger: Logger, page: Page, pupilId: string, timeFunction: timeFunctionType, sessionActive: () => boolean) {
         this.logger = logger;
         this.page = page;
