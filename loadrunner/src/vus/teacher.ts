@@ -98,17 +98,14 @@ export default class VirtualTeacher extends VirtualUser {
     }
 
     async grade(page: Page) {
-        const next = await Promise.race([
-            page.waitForSelector("#teacherWorkspaceArea"),
-            page.waitForSelector("text='Gerade nichts zu tun'")
-        ]);
-        const text = await next?.textContent();
-        if (!text?.includes("Gerade nichts zu tun")) {
-            this.logger.info("Grading exercise");
-            await page.fill("#teacherWorkspaceArea textarea", "abcdefghijklmnopqrstuvwxyz!!!");
-            await page.click("button:has-text('Bewerten')"); // TODO: doch graden?
-            await page.click("button:has-text('ja')");
+        await page.waitForSelector("#teacher__workspaceContainer")
+        if (await page.$("text='Gerade nichts zu tun'")) {
+            return;
         }
+        this.logger.info("Grading exercise");
+        await page.fill("#teacherWorkspaceArea textarea", "abcdefghijklmnopqrstuvwxyz!!!");
+        await page.click("button:has-text('Bewerten')"); // TODO: doch graden?
+        await page.click("button:has-text('ja')");
     }
 
     // TODO: move to base
