@@ -77,24 +77,24 @@ export default class VirtualTeacher extends VirtualUser {
 
         await page.click("button:has-text('Bereit?')");
 
-        await solveCaptcha();
-        
-        async function solveCaptcha() {
-            const haveFun = await page.waitForSelector("[data-id=haveFun]");
-            const source = await haveFun.boundingBox();
-            if (!source) {
-                throw new Error();
-            }
-            const whilePlaying = await page.waitForSelector("[data-id=whilePlaying]");
-            const target = await whilePlaying.boundingBox();
-            if (!target) {
-                throw new Error();
-            }
-            await page.mouse.move(source?.x + source?.width / 2, source?.y + source?.height / 2);
-            await page.mouse.down();
-            await page.mouse.move(target?.x + target?.width / 2, target?.y + target?.height / 2);
-            await page.mouse.up();
+        await this.solveCaptcha(page);
+    }
+
+    async solveCaptcha(page: Page) {
+        const haveFun = await page.waitForSelector("[data-id=haveFun]");
+        const source = await haveFun.boundingBox();
+        if (!source) {
+            throw new Error();
         }
+        const whilePlaying = await page.waitForSelector("[data-id=whilePlaying]");
+        const target = await whilePlaying.boundingBox();
+        if (!target) {
+            throw new Error();
+        }
+        await page.mouse.move(source?.x + source?.width / 2, source?.y + source?.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(target?.x + target?.width / 2, target?.y + target?.height / 2);
+        await page.mouse.up();
     }
 
     async grade(page: Page) {
@@ -149,8 +149,7 @@ export default class VirtualTeacher extends VirtualUser {
 
         await page.click("button[type=submit]");
 
-        const codeElem = await page.waitForSelector(".classCode h1");
-        const code = await codeElem.textContent();
+        const code = await page.textContent(".classCode h1");
         if (!code) {
             throw new Error("No class code found");
         }

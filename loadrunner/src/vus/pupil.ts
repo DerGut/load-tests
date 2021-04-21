@@ -57,7 +57,7 @@ export default class VirtualPupil extends VirtualUser {
                 await page.click("button:has-text('Zum Arbeitsplatz')");
             } else {
                 this.logger.info("Accepting taskseries");
-                this.time("taskseries_accept", async () => {
+                await this.time("taskseries_accept", async () => {
                     await page.click("text=Annehmen");
                     await page.waitForSelector("#taskSeries");
                 });
@@ -160,8 +160,7 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async investmentAvailable(page: Page): Promise<boolean> {
-        const office = await page.waitForSelector("xpath=//*[contains(@class, 'office')]/..");
-        const classes = await office.getAttribute("class");
+        const classes = await page.getAttribute("xpath=//*[contains(@class, 'office')]/..", "class");
         return classes !== null && classes.includes("-pulse");
     }
 

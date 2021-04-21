@@ -17,8 +17,7 @@ export class TaskSeries {
     }
 
     async getHeading(): Promise<string> {
-        const heading = await this.page.waitForSelector("h1");
-        return await heading.innerText();
+        return await this.page.innerText("h1");
     }
 
     async finished(): Promise<boolean> {

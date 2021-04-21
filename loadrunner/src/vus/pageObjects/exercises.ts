@@ -31,10 +31,10 @@ export abstract class Exercise {
 
     async maybeDismissWrongAnswerModal() {
         await think(2);
-        const wrongAnswerModal = await this.page.$("button:has-text('OK')");
-        if (wrongAnswerModal) {
-            await wrongAnswerModal.click(); // dismiss
-        }
+        try {
+            const wrongAnswerModal = await this.page.waitForSelector("button:has-text('OK')", { timeout: 1 });    
+            await wrongAnswerModal?.click();
+        } catch {}
     }
 
     async evaluation(): Promise<boolean> {
@@ -73,15 +73,12 @@ export abstract class Exercise {
         console.log("Requesting help");
         const questionButton = await this.handle.waitForSelector("button:has-text('Fragen')");
         await questionButton.click();
-        const textarea = await this.page.waitForSelector("textarea");
-        await textarea.fill("qwertyuiopasdfghjkl");
-        const submit = await this.page.waitForSelector("text='Frage stellen!'");
-        await submit.click();
+        await this.page.fill("textarea", "qwertyuiopasdfghjkl");
+        await this.page.click("text='Frage stellen!'");
         // const minimize = await this.handle.waitForSelector("text=minimieren");
         // await minimize.click();
     }
 }
-
 
 export class FreeText extends Exercise {
     avgWorkDurationSec = 300;
