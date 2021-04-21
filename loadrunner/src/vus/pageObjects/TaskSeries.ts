@@ -41,35 +41,25 @@ export class TaskSeries {
     }
 
     async nextExercise(): Promise<Exercise> {
-        const next = await this.time("exercise_next", false, async () => {
-            await this.page.waitForSelector(".exercise");
-            const exercises = await this.page.$$(".exercise");
-            return exercises.pop();
-        });
-        if (!next) {
-            throw new Error("Exercise expected");
-        }
-        const type = await this.time("exercise_type", false, async () => {
-            const body = await next.waitForSelector("div > div:nth-of-type(3)");
-            if (!body) {
-                throw new Error("didn't find exercise body");
-            }
+        this.exerciseIndex++;
+        const exerciseSelector = `.exercise:nth-of-type(${this.exerciseIndex})`;
 
-            return await body.getAttribute("class");
-        });
-
-        const id = await next.getAttribute("id");
+        const id = await this.page.getAttribute(exerciseSelector, "id");
         this.logger.info(`Next exercise: ${id}`);
+
+        const type = await this.time("exercise_type", false, async () => {
+            return await this.page.getAttribute(`${exerciseSelector} div > div:nth-of-type(3)`, "class");
+        });
 
         switch (type) {
             case "freeText":
-                return new FreeText(this.logger, this.page, this.pupilId, next);
+                return new FreeText(this.logger, this.page, this.pupilId, this.exerciseIndex);
             case "survey":
-                return new Survey(this.logger, this.page, this.pupilId, next);
+                return new Survey(this.logger, this.page, this.pupilId, this.exerciseIndex);
             case "multipleChoice":
-                return new MultipleChoice(this.logger, this.page, this.pupilId, next);
+                return new MultipleChoice(this.logger, this.page, this.pupilId, this.exerciseIndex);
             case "input__Field":
-                return new InputField(this.logger, this.page, this.pupilId, next);
+                return new InputField(this.logger, this.page, this.pupilId, this.exerciseIndex);
             default:
                 throw new Error(`Exercise type "${type}" not implemented`);
         }

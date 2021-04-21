@@ -6,16 +6,20 @@ export abstract class Exercise {
     logger: Logger;
     page: Page;
     pupilId: string;
-    handle: ElementHandle;
+    index: number;
     avgWorkDurationSec: number = -1;
-    constructor(logger: Logger, page: Page, pupilId: string, exerciseHandle: ElementHandle) {
+    constructor(logger: Logger, page: Page, pupilId: string, index: number) {
         this.logger = logger;
         this.page = page;
         this.pupilId = pupilId;
-        this.handle = exerciseHandle;
+        this.index = index;
     }
 
     abstract submit(): Promise<boolean>;
+
+    selector(selector: string): string {
+        return `.exercise:nth-of-type(${this.index}) ${selector}`;
+    }
 
     // Waits between (avgWorkDurationSec/4) and (6*avgWorkDurationSec/4)
     async think(thinkTimeFactor: number) {
@@ -61,7 +65,7 @@ export abstract class Exercise {
 
     async getHint() {
         console.log("getting hint");
-        const button = await this.handle.waitForSelector("button:has-text('Tipp')");
+        const button = await this.page.waitForSelector(this.selector("button:has-text('Tipp')"));
         if (await button.isEnabled()) {
             await button.click();
         } else {
@@ -71,7 +75,7 @@ export abstract class Exercise {
 
     async requestHelp() {
         console.log("Requesting help");
-        const questionButton = await this.handle.waitForSelector("button:has-text('Fragen')");
+        const questionButton = await this.page.waitForSelector(this.selector("button:has-text('Fragen')"));
         await questionButton.click();
         await this.page.fill("textarea", "qwertyuiopasdfghjkl");
         await this.page.click("text='Frage stellen!'");
@@ -87,12 +91,12 @@ export class FreeText extends Exercise {
             await this.requestHelp();
         }
         await this.think(thinkTimeFactor);
-        const input = await this.handle.waitForSelector(".ql-editor");
+        const input = await this.page.waitForSelector(this.selector(".ql-editor"));
         await input.fill("abcdefghijklmnopqrstuvwxyz");
     }
     
     async submit(): Promise<boolean> {
-        const submit = await this.handle.waitForSelector("button:has-text('Abgeben')");
+        const submit = await this.page.waitForSelector(this.selector("button:has-text('Abgeben')"));
         await submit.click();
         return true;
     }
@@ -106,7 +110,7 @@ export class Survey extends Exercise {
             await this.requestHelp();
         }
 
-        const div = await this.handle.waitForSelector(".survey > div");
+        const div = await this.page.waitForSelector(this.selector(".survey > div"));
         const subType = await div.getAttribute("class");
         switch (subType) {
             case "multipleChoice": // with hint and 
@@ -114,7 +118,7 @@ export class Survey extends Exercise {
                 await choice.click();
                 break;
             case "rangeSlider": // with hint and question
-                const rangeSlider = await this.handle.waitForSelector("input");
+                const rangeSlider = await this.page.waitForSelector(this.selector("input"));
                 await rangeSlider.evaluate((elem) => elem.stepUp()); // change value
                 await rangeSlider.dispatchEvent("change");
                 break;
@@ -124,7 +128,7 @@ export class Survey extends Exercise {
     }
 
     async submit(): Promise<boolean> {
-        const submit = await this.handle.waitForSelector("button:has-text('Abstimmen')");
+        const submit = await this.page.waitForSelector(this.selector("button:has-text('Abstimmen')"));
         await submit.click();
         return true;
     }
@@ -142,7 +146,8 @@ export class MultipleChoice extends Exercise {
 
     async submit(): Promise<boolean> {
         try {
-            const submit = await this.handle.waitForSelector("button:has-text('Überprüfen')");
+            // TODO: double check
+            const submit = await this.page.waitForSelector(this.selector("button:has-text('Überprüfen')"));
             await submit.click();
         } catch (e) {
             await this.page.screenshot({ path: `/home/pwuser/runner/errors/${this.pupilId}.png`, fullPage: true });
@@ -158,12 +163,12 @@ export class InputField extends Exercise {
 
     async work(thinkTimeFactor: number) {
         await this.think(thinkTimeFactor);
-        const input = await this.handle.waitForSelector("#input");
+        const input = await this.page.waitForSelector(this.selector("#input"));
         await input.fill("1");
     }
 
     async submit() {
-        const submit = await this.handle.waitForSelector("button:has-text('Überprüfen')");
+        const submit = await this.page.waitForSelector(this.selector("button:has-text('Überprüfen')"));
         await submit.click();
 
         return await this.evaluation();
