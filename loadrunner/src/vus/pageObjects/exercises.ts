@@ -139,13 +139,8 @@ export class MultipleChoice extends Exercise {
     }
 
     async submit(): Promise<boolean> {
-        try {
-            // TODO: double check
-            await this.page.click(this.selector("button:has-text('Überprüfen')"));
-        } catch (e) {
-            await this.page.screenshot({ path: `/home/pwuser/runner/errors/${this.pupilId}.png`, fullPage: true });
-            throw e;
-        }
+        // TODO: double check
+        await this.page.click(this.selector("button:has-text('Überprüfen')"));
 
         return await this.evaluation();
     }
