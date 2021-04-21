@@ -18,7 +18,7 @@ export abstract class Exercise {
     abstract submit(): Promise<boolean>;
 
     selector(selector: string): string {
-        return `.exercise:nth-of-type(${this.index}) ${selector}`;
+        return `:nth-match(.exercise, ${this.index}) ${selector}`;
     }
 
     // Waits between (avgWorkDurationSec/4) and (6*avgWorkDurationSec/4)
