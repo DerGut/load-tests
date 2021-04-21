@@ -14,9 +14,7 @@ export default class VirtualTeacher extends VirtualUser {
         this.config = config;
     }
 
-    async run() {
-        const page = await this.context.newPage();
-
+    async run(page: Page) {
         await this.think();
         await page.goto(this.config.pageUrl);
 

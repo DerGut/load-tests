@@ -19,7 +19,7 @@ export default abstract class VirtualUser extends EventEmitter {
         this.logger = newLogger(id);
     }
 
-    abstract run(): Promise<void>;
+    abstract run(page: Page): Promise<void>;
 
     sessionActive(): boolean {
         return this.active;
@@ -27,10 +27,12 @@ export default abstract class VirtualUser extends EventEmitter {
 
     async start() {
         this.emit("started");
+        const page = await this.context.newPage();
         try {
-            await this.run();
+            await this.run(page);
         } catch (e) {
             this.emit("failed", e);
+            await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
         } finally {
             this.emit("stopped");
         }
@@ -61,7 +63,7 @@ export default abstract class VirtualUser extends EventEmitter {
                 if (!this.sessionActive()) {
                     return Promise.reject(e);
                 } else if (e instanceof errors.TimeoutError) {
-                    this.logger.error("Refreshing and trying again", e);
+                    this.logger.warn("Refreshing and trying again", e);
                     statsd.increment(ERRORS);
                     await page.reload();
                 } else {
