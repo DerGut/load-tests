@@ -1,7 +1,7 @@
 import SegfaultHandler from "segfault-handler";
 import "dd-trace/init";
 
-import { BrowserContext, chromium } from "playwright-chromium";
+import { Browser, BrowserContext, chromium, LaunchOptions } from "playwright-chromium";
 
 import newLogger, { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
@@ -16,10 +16,8 @@ import fs from "fs/promises";
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
     rootLogger.info(`runID: ${runID}`);
 
-    statsd.gauge("test", 2);
-
     const pwLogger = newLogger("playwright");
-    const browser = await chromium.launch({ 
+    const browserConfig: LaunchOptions = { 
         headless,
         slowMo: 200,
         args: [
@@ -41,25 +39,25 @@ import fs from "fs/promises";
         },
         handleSIGINT: false,
         handleSIGTERM: false
-    });
-    const contexts = (await Promise.all(
-        accounts.map(createContextsForClass))
+    };
+    // TODO: try running separate browsers and see whether this works more smoothly
+    const browsers = (await Promise.all(
+        accounts.map(classroom => createBrowsersForClass(classroom, browserConfig)))
         ).flat();
 
-    async function createContextsForClass(classroom: Classroom): Promise<BrowserContext[]> {
-        const ctx = [await browser.newContext()];
+    async function createBrowsersForClass(classroom: Classroom, browserConfig: LaunchOptions): Promise<Browser[]> {
+        const browsers = [await chromium.launch(browserConfig)];
         for (let i = 0; i < classroom.pupils.length; i++) {
-            ctx.push(await browser.newContext());
+            browsers.push(await chromium.launch(browserConfig));
         }
-        return ctx;
+        return browsers;
     }
 
-    const lr = new LoadRunner(contexts, runID, url, accounts);
+    const lr = new LoadRunner(browsers, runID, url, accounts);
     lr.on("stopped", async () => {
         rootLogger.info("Runner has stopped.");
         statsd.decrement(RUNNERS);
         statsd.decrement(CLASSES, accounts.length);
-        await browser.close();
     });
     process.once("SIGINT", async () => {
         rootLogger.info("Received SIGINT, stopping runner.");

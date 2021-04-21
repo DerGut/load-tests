@@ -1,4 +1,4 @@
-import { BrowserContext } from "playwright-chromium";
+import { Browser, BrowserContext } from "playwright-chromium";
 
 import ClassLog from "./vus/classLog";
 import VirtualPupil from "./vus/pupil";
@@ -10,14 +10,14 @@ import EventEmitter from "events";
 
 export default class LoadRunner extends EventEmitter {
     logger = newLogger("runner");
-    contexts: BrowserContext[];
+    browsers: Browser[];
     runID: string;
     url: string;
     accounts: Classroom[];
     vus: VirtualUser[] = [];
-    constructor(contexts: BrowserContext[], runID: string, url: string, accounts: Classroom[]) {
+    constructor(browsers: Browser[], runID: string, url: string, accounts: Classroom[]) {
         super();
-        this.contexts = contexts;
+        this.browsers = browsers;
         this.runID = runID;
         this.url = url;
         this.accounts = accounts;
@@ -57,7 +57,7 @@ export default class LoadRunner extends EventEmitter {
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
         const vus: VirtualUser[] = [];
 
-        const context = this.getContext();
+        const context = await this.getContext();
         const vu = this.buildTeacher(context, classroom.teacher);
         this.handleVU(vu, context);
         vu.start();
@@ -66,7 +66,7 @@ export default class LoadRunner extends EventEmitter {
         for (let i = 0; i < classroom.pupils.length; i++) {
             const pupil = classroom.pupils[i];
 
-            const context = this.getContext();
+            const context = await this.getContext();
             const vu = this.buildPupil(context, pupil);
             this.handleVU(vu, context);
             vu.start();
@@ -78,12 +78,12 @@ export default class LoadRunner extends EventEmitter {
         return vus;
     }
 
-    getContext(): BrowserContext {
-        const context = this.contexts.pop();
-        if (!context) {
+    async getContext(): Promise<BrowserContext> {
+        const browser = this.browsers.pop();
+        if (!browser) {
             throw new Error("Not enough contexts provided");
         }
-        return context;
+        return await browser.newContext();
     }
 
     buildTeacher(context: BrowserContext, account: Teacher): VirtualTeacher {
@@ -109,7 +109,7 @@ export default class LoadRunner extends EventEmitter {
             statsd.decrement(VUS);
             this.vus = this.vus.filter(v => v !== vu);
             try {
-                await context.close();
+                await context.browser()?.close();
             } catch(e) {
                 this.logger.warning("Context was already closed", e)
             }
@@ -121,7 +121,7 @@ export default class LoadRunner extends EventEmitter {
 
         const classLog = new ClassLog(classroom.pupils.length);
 
-        const context = this.getContext();
+        const context = await this.getContext();
         const vu = new VirtualTeacher(context, classroom.teacher, {
             pageUrl: this.url,
             classLog: classLog,
@@ -136,7 +136,7 @@ export default class LoadRunner extends EventEmitter {
         for (let i = 0; i < classroom.pupils.length; i++) {
             const pupil = classroom.pupils[i];
             classLog.onClassCreated(async joinCode => {
-                const context = this.getContext();
+                const context = await this.getContext();
                 const vu = new VirtualPupil(context, pupil, {
                     pageUrl: this.url,
                     classCode: joinCode,
