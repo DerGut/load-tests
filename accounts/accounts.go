@@ -78,18 +78,12 @@ func Get(classConcurrency, classSize int, preparedPortion float64) ([]Classroom,
 		return nil, fmt.Errorf("not enough classes: %w", ErrWrongDumpSize)
 	}
 
-	accounts, err := sizeDump(dump, classConcurrency, preparedPortion)
+	accounts, err := SizeDump(dump, classConcurrency, classSize, preparedPortion)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, a := range accounts {
-		if len(a.Pupils) != classSize {
-			return nil, fmt.Errorf("not enough pupils per class: %w", ErrWrongDumpSize)
-		}
-	}
-
-	return dump, nil
+	return accounts, nil
 }
 
 func Read() ([]Classroom, error) {
@@ -107,7 +101,7 @@ func Read() ([]Classroom, error) {
 	return c, err
 }
 
-func sizeDump(dump []Classroom, classConcurrency int, preparedPortion float64) ([]Classroom, error) {
+func SizeDump(dump []Classroom, classConcurrency, classSize int, preparedPortion float64) ([]Classroom, error) {
 	numPreparedWanted := NumPrepared(classConcurrency, preparedPortion)
 
 	// Sort accounts from prepared to unprepared
@@ -116,17 +110,36 @@ func sizeDump(dump []Classroom, classConcurrency int, preparedPortion float64) (
 	})
 
 	var accounts []Classroom
-	for i := 0; i < classConcurrency; i++ {
-		if i < numPreparedWanted && !dump[i].Prepared {
+	i := 0
+	j := 0
+	for i < classConcurrency && j < len(dump) {
+		if j < numPreparedWanted && !dump[j].Prepared {
 			return nil, fmt.Errorf("not enough prepared accounts in dump: %w", ErrWrongDumpSize)
 		}
-		if i >= numPreparedWanted && dump[i].Prepared {
+		if j >= numPreparedWanted && dump[j].Prepared {
+			j++
 			continue
 		}
-		accounts = append(accounts, dump[i])
+
+		err := sizeClassroom(&dump[j], classSize)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, dump[j])
+		i++
+		j++
 	}
 
 	return accounts, nil
+}
+
+func sizeClassroom(c *Classroom, classSize int) error {
+	if len(c.Pupils) < classSize {
+		return fmt.Errorf("not enough prepared accounts in classroom: %w", ErrWrongDumpSize)
+	}
+
+	c.Pupils = c.Pupils[:classSize]
+	return nil
 }
 
 func Restore(ctx context.Context, dbUri string, archivePath string) error {
