@@ -36,14 +36,16 @@ export default class VirtualTeacher extends VirtualUser {
             if (!this.config.className || !this.config.classSize) {
                 throw new Error("className and classSize should be provided for new class creation");
             }
-            console.log("Creating class");
+            this.logger.info("Creating class");
             const classCode = await this.createClass(page, this.config.className, this.config.classSize);
             this.config.classLog.addClass(classCode);
 
             await this.addUnits(page);
         }
         
-        await this.teach(page);
+        while (this.sessionActive()) {
+            await this.teach(page);
+        }
     }
 
     async teach(page: Page) {
@@ -55,7 +57,6 @@ export default class VirtualTeacher extends VirtualUser {
                 await this.grade(page);
             } else {
                 await page.click("h4:has-text('Klassenraum')");
-                console.log("skip");
             }
             alternate++;
             await this.think();
@@ -103,6 +104,7 @@ export default class VirtualTeacher extends VirtualUser {
         ]);
         const text = await next?.textContent();
         if (!text?.includes("Gerade nichts zu tun")) {
+            this.logger.info("Grading exercise");
             await page.fill("#teacherWorkspaceArea textarea", "abcdefghijklmnopqrstuvwxyz!!!");
             await page.click("button:has-text('Bewerten')"); // TODO: doch graden?
             await page.click("button:has-text('ja')");
