@@ -57,7 +57,8 @@ export default class VirtualPupil extends VirtualUser {
                 await page.click("button:has-text('Zum Arbeitsplatz')");
             } else {
                 this.logger.info("Accepting taskseries");
-                await this.time("taskseries_accept", async () => {
+                await this.time("taskseries_accept", true, async () => {
+                    // TODO: double check
                     await page.click("text=Annehmen");
                     await page.waitForSelector("#taskSeries");
                 });
@@ -67,7 +68,7 @@ export default class VirtualPupil extends VirtualUser {
             
             let heading;
             // This is not synchronous with the server. measure it for reference
-            await this.time("taskseries_heading", async () => {
+            await this.time("taskseries_heading", false, async () => {
                 heading = await taskSeries.getHeading();
             });
             this.logger.info(`Started taskSeries "${heading}"`);
@@ -83,7 +84,7 @@ export default class VirtualPupil extends VirtualUser {
                     await exercise.work(this.thinkTimeFactor);
                     let done;
                     do {
-                        await this.time("exercise_submit", async () => {
+                        await this.time("exercise_submit", true, async () => {
                             done = await exercise.submit();
                         });
                     } while (!done);
@@ -97,15 +98,14 @@ export default class VirtualPupil extends VirtualUser {
             }
 
             this.logger.info("Submitting task series");
-            await this.time("taskseries_submit", async () => {
+            await this.time("taskseries_submit", true, async () => {
                 await taskSeries.submit();
             });
             
             await page.click("button:has-text('OK')"); // dismiss modal
             statsd.increment(TASKSERIES_SUBMITTED);
             if (await this.investmentAvailable(page)) {
-                // This is not synchronous with the server. measure it for reference
-                await this.time("invest", async () => {
+                await this.time("invest", false, async () => {
                     await this.invest(page);
                 });
             }
@@ -118,7 +118,7 @@ export default class VirtualPupil extends VirtualUser {
         await page.type("[placeholder='Passwort']:nth-of-type(1)", password, { delay: typeDelay });
         await page.type("[placeholder='Passwort wiederholen'],[placeholder='Passwort']:nth-of-type(2)", password, { delay: typeDelay });
         
-        await this.time("register", async () => {
+        await this.time("register", true, async () => {
             await page.click("button:has-text('Bereit?')");
             await page.waitForSelector(`text='Hallo ${username}!'`);
         });
@@ -126,7 +126,7 @@ export default class VirtualPupil extends VirtualUser {
 
     async createCompany(page: Page, name: string) {
         await page.fill(".foundCompany__input input", name);
-        await this.time("company", async () => {
+        await this.time("company", true, async () => {
             await page.click("button:has-text('Los geht')");
             await page.waitForSelector("text='Übersicht'");
         });
@@ -135,7 +135,7 @@ export default class VirtualPupil extends VirtualUser {
     async loginExistingAccount(page: Page) {
         await this.think();
 
-        await this.time("login_click", async () => {
+        await this.time("login_click", false, async () => {
             await page.click("text='Einloggen'");
         });
 
@@ -144,7 +144,7 @@ export default class VirtualPupil extends VirtualUser {
         await page.type("[placeholder='Nutzername/Email']", this.account.username, { delay: typeDelay });
         await page.type("[placeholder='Passwort']", this.account.password, { delay: typeDelay });
 
-        await this.time("login", async () => {
+        await this.time("login", true, async () => {
             await page.click("button:has-text('Einloggen')");
             const result = await Promise.race([
                 page.waitForSelector("text='Einloggen nicht möglich! Überprüfe Benutzernamen/Email und Passwort!'"),

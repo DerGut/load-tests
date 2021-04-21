@@ -112,7 +112,7 @@ export default class VirtualTeacher extends VirtualUser {
     async loginExistingAccount(page: Page, email: string, password: string) {
         await this.think();
 
-        await this.time("login_click", async () => {
+        await this.time("login_click", false, async () => {
             await page.click("text='Einloggen'");
         });
 
@@ -121,7 +121,7 @@ export default class VirtualTeacher extends VirtualUser {
         await page.type("[placeholder='Nutzername/Email']", email, { delay: typeDelay });
         await page.type("[placeholder='Passwort']", password, { delay: typeDelay });
 
-        await this.time("login", async () => {
+        await this.time("login", true, async () => {
             await page.click("button:has-text('Einloggen')");
             const result = await Promise.race([
                 page.waitForSelector("text='Einloggen nicht möglich! Überprüfe Benutzernamen/Email und Passwort!'"),

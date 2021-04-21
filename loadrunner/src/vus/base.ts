@@ -50,9 +50,20 @@ export default abstract class VirtualUser extends EventEmitter {
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 
-    async time(label: string, fn: () => Promise<any>): Promise<any> {
+    async time(label: string, sync: boolean = false, fn: () => Promise<any>): Promise<any> {
+        if (sync) {
+            statsd.increment("ops");
+        }
+        
         const intrumented = statsd.asyncDistTimer(fn, label);
-        return await intrumented();
+        try {
+            return await intrumented();
+        } catch (e) {
+            if (sync) {
+                statsd.increment(ERRORS);
+            }
+            throw e;
+        }
     }
 
     async retryRefreshing<T>(page: Page, fn: () => Promise<T>): Promise<T> {
@@ -64,7 +75,6 @@ export default abstract class VirtualUser extends EventEmitter {
                     return Promise.reject(e);
                 } else if (e instanceof errors.TimeoutError) {
                     this.logger.warn("Refreshing and trying again", e);
-                    statsd.increment(ERRORS);
                     await page.reload();
                 } else {
                     throw e;
