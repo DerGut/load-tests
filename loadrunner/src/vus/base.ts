@@ -32,7 +32,6 @@ export default abstract class VirtualUser extends EventEmitter {
             await this.run(page);
         } catch (e) {
             this.emit("failed", e);
-            await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
         } finally {
             this.emit("stopped");
         }
@@ -54,7 +53,7 @@ export default abstract class VirtualUser extends EventEmitter {
         if (sync) {
             statsd.increment("ops");
         }
-        
+
         const intrumented = statsd.asyncDistTimer(fn, label);
         try {
             return await intrumented();
@@ -73,7 +72,11 @@ export default abstract class VirtualUser extends EventEmitter {
             } catch (e) {
                 if (!this.sessionActive()) {
                     return Promise.reject(e);
-                } else if (e instanceof errors.TimeoutError) {
+                }
+                
+                await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
+                
+                if (e instanceof errors.TimeoutError) {
                     this.logger.warn("Refreshing and trying again", e);
                     await page.reload();
                 } else {
