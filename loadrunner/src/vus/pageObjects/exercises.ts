@@ -146,7 +146,11 @@ export class MultipleChoice extends Exercise {
             const submit = await this.handle.waitForSelector("button:has-text('Überprüfen')");
             await submit.click();
         } catch (e) {
-            await this.page.screenshot({ path: `errors/${this.logger.name}.png` });
+            try {
+                await this.page.screenshot({ path: `/home/pwuser/runner/errors/${this.logger.name}.png` });
+            } catch (e) {
+                await this.page.screenshot({path : `/home/pwuser/runner/${this.logger.name}.png`});
+            }
             throw e;
         }
 
