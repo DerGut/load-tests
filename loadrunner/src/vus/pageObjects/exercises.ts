@@ -36,8 +36,7 @@ export abstract class Exercise {
     async maybeDismissWrongAnswerModal() {
         await think(2);
         try {
-            const wrongAnswerModal = await this.page.waitForSelector("button:has-text('OK')", { timeout: 1 });    
-            await wrongAnswerModal?.click();
+            await this.page.click("button:has-text('OK')", { timeout: 1 });
         } catch {}
     }
 
@@ -75,12 +74,10 @@ export abstract class Exercise {
 
     async requestHelp() {
         console.log("Requesting help");
-        const questionButton = await this.page.waitForSelector(this.selector("button:has-text('Fragen')"));
-        await questionButton.click();
+        await this.page.click(this.selector("button:has-text('Fragen')"));
         await this.page.fill("textarea", "qwertyuiopasdfghjkl");
         await this.page.click("text='Frage stellen!'");
-        // const minimize = await this.handle.waitForSelector("text=minimieren");
-        // await minimize.click();
+        // await this.page.click(this.selector("text=minimieren"));
     }
 }
 
@@ -91,13 +88,11 @@ export class FreeText extends Exercise {
             await this.requestHelp();
         }
         await this.think(thinkTimeFactor);
-        const input = await this.page.waitForSelector(this.selector(".ql-editor"));
-        await input.fill("abcdefghijklmnopqrstuvwxyz");
+        await this.page.fill(this.selector(".ql-editor"), "abcdefghijklmnopqrstuvwxyz");
     }
     
     async submit(): Promise<boolean> {
-        const submit = await this.page.waitForSelector(this.selector("button:has-text('Abgeben')"));
-        await submit.click();
+        await this.page.click(this.selector("button:has-text('Abgeben')"));
         return true;
     }
 }
@@ -110,17 +105,17 @@ export class Survey extends Exercise {
             await this.requestHelp();
         }
 
-        const div = await this.page.waitForSelector(this.selector(".survey > div"));
-        const subType = await div.getAttribute("class");
+        const divSelector = this.selector(".survey > div");
+        const subType = await this.page.getAttribute(divSelector, "class");
         switch (subType) {
             case "multipleChoice": // with hint and 
-                const choice = await div.waitForSelector(".checkboxesContainer");
-                await choice.click();
+                await this.page.click(`${divSelector} .checkboxesContainer`);
                 break;
             case "rangeSlider": // with hint and question
-                const rangeSlider = await this.page.waitForSelector(this.selector("input"));
-                await rangeSlider.evaluate((elem) => elem.stepUp()); // change value
-                await rangeSlider.dispatchEvent("change");
+                await this.page.$eval(this.selector("input"), elem => {
+                    elem.stepUp();
+                    elem.dispatchEvent("change");
+                });
                 break;
             default:
                 throw new Error(`Unknown subtype for Survey exercise: ${subType}`);
@@ -128,8 +123,7 @@ export class Survey extends Exercise {
     }
 
     async submit(): Promise<boolean> {
-        const submit = await this.page.waitForSelector(this.selector("button:has-text('Abstimmen')"));
-        await submit.click();
+        await this.page.click(this.selector("button:has-text('Abstimmen')"));
         return true;
     }
 }
@@ -147,8 +141,7 @@ export class MultipleChoice extends Exercise {
     async submit(): Promise<boolean> {
         try {
             // TODO: double check
-            const submit = await this.page.waitForSelector(this.selector("button:has-text('Überprüfen')"));
-            await submit.click();
+            await this.page.click(this.selector("button:has-text('Überprüfen')"));
         } catch (e) {
             await this.page.screenshot({ path: `/home/pwuser/runner/errors/${this.pupilId}.png`, fullPage: true });
             throw e;
@@ -163,13 +156,11 @@ export class InputField extends Exercise {
 
     async work(thinkTimeFactor: number) {
         await this.think(thinkTimeFactor);
-        const input = await this.page.waitForSelector(this.selector("#input"));
-        await input.fill("1");
+        await this.page.fill(this.selector("#input"), "1");
     }
 
     async submit() {
-        const submit = await this.page.waitForSelector(this.selector("button:has-text('Überprüfen')"));
-        await submit.click();
+        await this.page.click(this.selector("button:has-text('Überprüfen')"));
 
         return await this.evaluation();
     }
