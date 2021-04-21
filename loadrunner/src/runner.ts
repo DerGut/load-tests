@@ -50,7 +50,7 @@ export default class LoadRunner extends EventEmitter {
                     this.emit("stopped");
                 }
             });
-            vu.stop()
+            vu.stop();
         });
     }
 
@@ -107,6 +107,7 @@ export default class LoadRunner extends EventEmitter {
         });
         vu.on("stopped", async () => {
             statsd.decrement(VUS);
+            this.vus = this.vus.filter(v => v !== vu);
             try {
                 await context.close();
             } catch(e) {
