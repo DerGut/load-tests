@@ -5,11 +5,13 @@ import { think } from "../pupil";
 export abstract class Exercise {
     logger: Logger;
     page: Page;
+    pupilId: string;
     handle: ElementHandle;
     avgWorkDurationSec: number = -1;
-    constructor(logger: Logger, page: Page, exerciseHandle: ElementHandle) {
+    constructor(logger: Logger, page: Page, pupilId: string, exerciseHandle: ElementHandle) {
         this.logger = logger;
         this.page = page;
+        this.pupilId = pupilId;
         this.handle = exerciseHandle;
     }
 
@@ -147,9 +149,9 @@ export class MultipleChoice extends Exercise {
             await submit.click();
         } catch (e) {
             try {
-                await this.page.screenshot({ path: `/home/pwuser/runner/errors/${this.logger.name}.png` });
+                await this.page.screenshot({ path: `/home/pwuser/runner/errors/${this.pupilId}.png` });
             } catch (e) {
-                await this.page.screenshot({path : `/home/pwuser/runner/${this.logger.name}.png`});
+                await this.page.screenshot({path : `/home/pwuser/runner/${this.pupilId}.png`});
             }
             throw e;
         }

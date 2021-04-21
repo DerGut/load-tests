@@ -5,11 +5,13 @@ import { Exercise, FreeText, InputField, MultipleChoice, Survey } from "./exerci
 export class TaskSeries {
     logger: Logger;
     page: Page;
+    pupilId: string;
     time: Function;
     sessionActive: () => boolean;
-    constructor(logger: Logger, page: Page, timeFunction: Function, sessionActive: () => boolean) {
+    constructor(logger: Logger, page: Page, pupilId: string, timeFunction: Function, sessionActive: () => boolean) {
         this.logger = logger;
         this.page = page;
+        this.pupilId = pupilId;
         this.time = timeFunction;
         this.sessionActive = sessionActive;
     }
@@ -59,13 +61,13 @@ export class TaskSeries {
 
         switch (type) {
             case "freeText":
-                return new FreeText(this.logger, this.page, next);
+                return new FreeText(this.logger, this.page, this.pupilId, next);
             case "survey":
-                return new Survey(this.logger, this.page, next);
+                return new Survey(this.logger, this.page, this.pupilId, next);
             case "multipleChoice":
-                return new MultipleChoice(this.logger, this.page, next);
+                return new MultipleChoice(this.logger, this.page, this.pupilId, next);
             case "input__Field":
-                return new InputField(this.logger, this.page, next);
+                return new InputField(this.logger, this.page, this.pupilId, next);
             default:
                 throw new Error(`Exercise type "${type}" not implemented`);
         }

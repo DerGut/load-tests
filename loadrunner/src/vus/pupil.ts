@@ -26,10 +26,23 @@ export default class VirtualPupil extends VirtualUser {
         });
         await this.think();
 
-        await this.retryRefreshing(page, async () => {
-            this.logger.info("Logging into account");
-            await this.login(page);
-        });
+        const classCode = this.config.classCode;
+        if (classCode) {
+            await this.retryRefreshing(page, async () => {
+                this.logger.info("Logging into account");
+                await page.fill("[placeholder=Klassencode]", classCode);
+                await page.click("button:has-text('Los')");
+                await this.register(page, this.account.username, this.account.password);
+            });
+            await this.retryRefreshing(page, async () => {
+                // TODO: after refresh we need to login first?
+                await this.createCompany(page, this.account.company);
+            });
+        } else {
+            await this.retryRefreshing(page, async () => {
+                await this.loginExistingAccount(page);
+            });
+        }
 
         await this.retryRefreshing(page, async () => {
             this.logger.info("Starting to play");
@@ -56,7 +69,7 @@ export default class VirtualPupil extends VirtualUser {
             
             let heading;
             // This is not synchronous with the server. measure it for reference
-            this.time("taskseries_heading", async () => {
+            await this.time("taskseries_heading", async () => {
                 heading = await taskSeries.getHeading();
             });
             this.logger.info(`Started taskSeries "${heading}"`);
@@ -101,17 +114,6 @@ export default class VirtualPupil extends VirtualUser {
         }
     }
 
-    async login(page: Page) {
-        if (this.config.classCode) {
-            await page.fill("[placeholder=Klassencode]", this.config.classCode);
-            await page.click("button:has-text('Los')");
-            await this.register(page, this.account.username, this.account.password);
-            await this.createCompany(page, this.account.company);
-        } else {
-            await this.loginExistingAccount(page);
-        }
-    }
-
     async register(page: Page, username: string, password: string) {
         const typeDelay = 200;
         await page.type("[placeholder='Benutzername']", username, { delay: typeDelay });
@@ -121,7 +123,7 @@ export default class VirtualPupil extends VirtualUser {
         await this.time("register", async () => {
             await page.click("button:has-text('Bereit?')");
             await page.waitForSelector(`text='Hallo ${username}!'`);
-        })
+        });
     }
 
     async createCompany(page: Page, name: string) {
@@ -129,7 +131,7 @@ export default class VirtualPupil extends VirtualUser {
         await this.time("company", async () => {
             await page.click("button:has-text('Los geht')");
             await page.waitForSelector("text='Übersicht'");
-        })
+        });
     }
 
     async loginExistingAccount(page: Page) {
