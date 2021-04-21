@@ -114,6 +114,7 @@ export class Survey extends Exercise {
             case "rangeSlider": // with hint and question
                 await this.page.$eval(this.selector("input"), elem => {
                     elem.stepUp();
+                    // @ts-ignore // Event is global in browser context
                     elem.dispatchEvent(new Event("change"));
                 });
                 break;
