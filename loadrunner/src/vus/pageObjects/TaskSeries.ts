@@ -2,13 +2,16 @@ import { Page } from "playwright-chromium";
 import { Logger } from "winston";
 import { Exercise, FreeText, InputField, MultipleChoice, Survey } from "./exercises";
 
+type timeFunctionType = <T>(label: string, sync: boolean, fn: () => Promise<T>) => Promise<T>;
+
 export class TaskSeries {
     logger: Logger;
     page: Page;
     pupilId: string;
-    time: Function;
+    time: timeFunctionType;
     sessionActive: () => boolean;
-    constructor(logger: Logger, page: Page, pupilId: string, timeFunction: Function, sessionActive: () => boolean) {
+    exerciseIndex: number = 1;
+    constructor(logger: Logger, page: Page, pupilId: string, timeFunction: timeFunctionType, sessionActive: () => boolean) {
         this.logger = logger;
         this.page = page;
         this.pupilId = pupilId;
@@ -38,7 +41,7 @@ export class TaskSeries {
     }
 
     async nextExercise(): Promise<Exercise> {
-        const next = await this.time("exercise_next", async () => {
+        const next = await this.time("exercise_next", false, async () => {
             await this.page.waitForSelector(".exercise");
             const exercises = await this.page.$$(".exercise");
             return exercises.pop();
@@ -46,7 +49,7 @@ export class TaskSeries {
         if (!next) {
             throw new Error("Exercise expected");
         }
-        const type = await this.time("exercise_type", async () => {
+        const type = await this.time("exercise_type", false, async () => {
             const body = await next.waitForSelector("div > div:nth-of-type(3)");
             if (!body) {
                 throw new Error("didn't find exercise body");

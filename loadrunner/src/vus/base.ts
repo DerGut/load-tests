@@ -49,7 +49,7 @@ export default abstract class VirtualUser extends EventEmitter {
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 
-    async time(label: string, sync: boolean = false, fn: () => Promise<any>): Promise<any> {
+    async time<T>(label: string, sync: boolean = false, fn: () => Promise<T>): Promise<T> {
         if (sync) {
             statsd.increment("ops");
         }
@@ -75,7 +75,7 @@ export default abstract class VirtualUser extends EventEmitter {
                 }
                 
                 await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
-                
+
                 if (e instanceof errors.TimeoutError) {
                     this.logger.warn("Refreshing and trying again", e);
                     await page.reload();
