@@ -7,6 +7,7 @@ import VirtualUser from "./vus/base";
 import newLogger from "./logger";
 import statsd, { CLASSES, VUS } from "./statsd";
 import EventEmitter from "events";
+import { Logger } from "winston";
 
 export default class LoadRunner extends EventEmitter {
     logger = newLogger("runner");
@@ -57,8 +58,12 @@ export default class LoadRunner extends EventEmitter {
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
         const vus: VirtualUser[] = [];
 
-        const context = await this.getContext();
-        const vu = this.buildTeacher(context, classroom.teacher);
+        const logger = newLogger(classroom.teacher.email);
+        const context = await this.getContext(logger);
+        const vu = new VirtualTeacher(logger, context, classroom.teacher, {
+            pageUrl: this.url,
+            thinkTimeFactor: this.drawThinkTimeFactor()
+        });
         this.handleVU(vu, context);
         vu.start();
         vus.push(vu);
@@ -66,8 +71,12 @@ export default class LoadRunner extends EventEmitter {
         for (let i = 0; i < classroom.pupils.length; i++) {
             const pupil = classroom.pupils[i];
 
-            const context = await this.getContext();
-            const vu = this.buildPupil(context, pupil);
+            const logger = newLogger(pupil.username);
+            const context = await this.getContext(logger);
+            const vu = new VirtualPupil(logger, context, pupil, {
+                pageUrl: this.url,
+                thinkTimeFactor: this.drawThinkTimeFactor()
+            });
             this.handleVU(vu, context);
             vu.start();
             vus.push(vu);
@@ -78,25 +87,25 @@ export default class LoadRunner extends EventEmitter {
         return vus;
     }
 
-    async getContext(): Promise<BrowserContext> {
+    async getContext(logger: Logger): Promise<BrowserContext> {
         const browser = this.browsers.pop();
         if (!browser) {
             throw new Error("Not enough contexts provided");
         }
-        return await browser.newContext();
-    }
-
-    buildTeacher(context: BrowserContext, account: Teacher): VirtualTeacher {
-        return new VirtualTeacher(context, account, {
-            pageUrl: this.url,
-            thinkTimeFactor: this.drawThinkTimeFactor()
-        });
-    }
-
-    buildPupil(context: BrowserContext, account: Pupil): VirtualPupil {
-        return new VirtualPupil(context, account, {
-            pageUrl: this.url,
-            thinkTimeFactor: this.drawThinkTimeFactor()
+        return await browser.newContext({
+            logger: {
+                isEnabled: () => true,
+                log: (name, severity, message, args) => {
+                    if (process.env.NODE_ENV !== "production") {
+                        return;
+                    }
+                    if (message instanceof Error) {
+                        logger.error(message);
+                    } else {
+                        logger.debug(message, {severity, name, args});
+                    }
+                }
+            },
         });
     }
 
@@ -121,8 +130,9 @@ export default class LoadRunner extends EventEmitter {
 
         const classLog = new ClassLog(classroom.pupils.length);
 
-        const context = await this.getContext();
-        const vu = new VirtualTeacher(context, classroom.teacher, {
+        const logger = newLogger(classroom.teacher.email);
+        const context = await this.getContext(logger);
+        const vu = new VirtualTeacher(logger, context, classroom.teacher, {
             pageUrl: this.url,
             classLog: classLog,
             className: classroom.name,
@@ -135,11 +145,12 @@ export default class LoadRunner extends EventEmitter {
 
         for (let i = 0; i < classroom.pupils.length; i++) {
             const pupil = classroom.pupils[i];
-            classLog.onClassCreated(async joinCode => {
-                const context = await this.getContext();
-                const vu = new VirtualPupil(context, pupil, {
+            classLog.onClassCreated(async classCode => {
+                const logger = newLogger(pupil.username);
+                const context = await this.getContext(logger);
+                const vu = new VirtualPupil(logger, context, pupil, {
                     pageUrl: this.url,
-                    classCode: joinCode,
+                    classCode,
                     thinkTimeFactor: this.drawThinkTimeFactor()
                 });
                 this.handleVU(vu, context);

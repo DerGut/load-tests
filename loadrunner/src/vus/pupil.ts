@@ -4,12 +4,13 @@ import { Config } from "./config";
 import VirtualUser from "./base";
 import statsd, { EXERCISES_SUBMITTED, TASKSERIES_SUBMITTED } from "../statsd";
 import { TaskSeries } from "./pageObjects/TaskSeries";
+import { Logger } from "winston";
 
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
-    constructor(context: BrowserContext, account: Pupil, config: Config) {
-        super(context, account.username, config.thinkTimeFactor);
+    constructor(logger: Logger, context: BrowserContext, account: Pupil, config: Config) {
+        super(logger, context, account.username, config.thinkTimeFactor);
         this.account = account;
         this.config = config;
     }
@@ -55,6 +56,8 @@ export default class VirtualPupil extends VirtualUser {
             if (await page.$("button:has-text('Zum Arbeitsplatz')")) {
                 this.logger.info("Back to workplace");
                 await page.click("button:has-text('Zum Arbeitsplatz')");
+                // TODO: when continuing an already started task series, we need to find the 
+                // most recent exercise we worked on/ the one we have feedback on
             } else {
                 this.logger.info("Accepting taskseries");
                 await this.time("taskseries_accept", true, async () => {

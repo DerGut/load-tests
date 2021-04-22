@@ -1,22 +1,20 @@
 import EventEmitter from "events";
 import { BrowserContext, errors, Page } from "playwright-chromium";
 import { Logger } from "winston";
-import newLogger from "../logger";
 import statsd, { ERRORS } from "../statsd";
 
 export default abstract class VirtualUser extends EventEmitter {
     logger: Logger;
     context: BrowserContext;
     thinkTimeFactor: number;
-    timestamp: [number, number] = [0, 0];
     active: boolean = true;
     id: string;
-    constructor(browserContext: BrowserContext, id: string, thinkTimeFactor: number) {
+    constructor(logger: Logger, browserContext: BrowserContext, id: string, thinkTimeFactor: number) {
         super();
+        this.logger = logger;
         this.context = browserContext;
         this.thinkTimeFactor = thinkTimeFactor;
         this.id = id;
-        this.logger = newLogger(id);
     }
 
     abstract run(page: Page): Promise<void>;

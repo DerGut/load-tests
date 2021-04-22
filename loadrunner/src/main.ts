@@ -33,7 +33,7 @@ import fs from "fs/promises";
                 if (message instanceof Error) {
                     pwLogger.error(message);
                 } else {
-                    pwLogger.log(severity, message, {name, args});
+                    pwLogger.debug(message, {severity, name, args});
                 }
             }
         },
