@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/DerGut/load-tests/controller"
@@ -34,6 +35,8 @@ type Config struct {
 	DoApiKey         string `json:"doApiKey"`
 	DoRegion         string `json:"doRegion"`
 	DoSize           string `json:"doSize"`
+
+	Debug bool `json:"debug"`
 }
 
 func Parse() *Config {
@@ -86,6 +89,8 @@ func (c *Config) merge(other *Config) {
 	if other.DoSize != "" {
 		c.DoSize = other.DoSize
 	}
+
+	c.Debug = c.Debug || other.Debug
 }
 
 var (
@@ -106,6 +111,8 @@ var (
 	ddApiKey         string
 	doRegion         string
 	doSize           string
+
+	debug bool
 )
 
 func init() {
@@ -127,6 +134,8 @@ func init() {
 	flag.StringVar(&ddApiKey, "ddApiKey", "", "The API key for datadog.")
 	flag.StringVar(&doRegion, "doRegion", "", "The region to provision the runner instances in.")
 	flag.StringVar(&doSize, "doSize", "", "The size of the runner instances to provision.")
+
+	flag.BoolVar(&debug, "debug", false, "Enables additional debug logging.")
 
 	flag.Parse()
 }
@@ -160,14 +169,21 @@ func parseConfigFile(path string) *Config {
 func parseEnvVars() *Config {
 	c := &Config{}
 
-	if dbUri, ok := os.LookupEnv("DB_URI"); ok {
-		c.DbUri = dbUri
+	if val, ok := os.LookupEnv("DB_URI"); ok {
+		c.DbUri = val
 	}
-	if doApiKey, ok := os.LookupEnv("DO_API_KEY"); ok {
-		c.DoApiKey = doApiKey
+	if val, ok := os.LookupEnv("DO_API_KEY"); ok {
+		c.DoApiKey = val
 	}
-	if ddApiKey, ok := os.LookupEnv("DD_API_KEY"); ok {
-		c.DdApiKey = ddApiKey
+	if val, ok := os.LookupEnv("DD_API_KEY"); ok {
+		c.DdApiKey = val
+	}
+
+	if val, ok := os.LookupEnv("DEBUG"); ok {
+		parsed, err := strconv.ParseBool(val)
+		if err == nil {
+			c.Debug = parsed
+		}
 	}
 
 	return c
@@ -190,6 +206,8 @@ func parseFlags() *Config {
 		DdApiKey:         ddApiKey,
 		DoRegion:         doRegion,
 		DoSize:           doSize,
+
+		Debug: debug,
 	}
 
 	return c
