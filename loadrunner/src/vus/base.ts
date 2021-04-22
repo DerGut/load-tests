@@ -9,12 +9,14 @@ export default abstract class VirtualUser extends EventEmitter {
     thinkTimeFactor: number;
     active: boolean = true;
     id: string;
-    constructor(logger: Logger, browserContext: BrowserContext, id: string, thinkTimeFactor: number) {
+    screenshotPath: string;
+    constructor(logger: Logger, browserContext: BrowserContext, id: string, thinkTimeFactor: number, screenshotPath: string) {
         super();
         this.logger = logger;
         this.context = browserContext;
         this.thinkTimeFactor = thinkTimeFactor;
         this.id = id;
+        this.screenshotPath = screenshotPath;
     }
 
     abstract run(page: Page): Promise<void>;
@@ -72,10 +74,8 @@ export default abstract class VirtualUser extends EventEmitter {
                     return Promise.reject(e);
                 }
                 
-                try {
-                    await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
-                } catch (se) {
-                    this.logger.warn("Failed to take screenshot", se);
+                if (this.screenshotPath !== "") {
+                    await this.takeScreenshot(page);
                 }
 
                 if (e instanceof errors.TimeoutError) {
@@ -88,5 +88,17 @@ export default abstract class VirtualUser extends EventEmitter {
         }
         
         return Promise.reject();
+    }
+
+    async takeScreenshot(page: Page) {
+        try {
+            await page.screenshot({ path: this.screenshotFile(), fullPage: true });
+        } catch (se) {
+            this.logger.warn("Failed to take screenshot", se);
+        }
+    }
+
+    screenshotFile(): string {
+        return `${this.screenshotPath}/${this.id}-${new Date().toString()}.png`;
     }
 }

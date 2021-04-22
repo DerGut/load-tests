@@ -9,8 +9,8 @@ import { Logger } from "winston";
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
-    constructor(logger: Logger, context: BrowserContext, account: Pupil, config: Config) {
-        super(logger, context, account.username, config.thinkTimeFactor);
+    constructor(logger: Logger, context: BrowserContext, account: Pupil, config: Config, screenshotPath: string) {
+        super(logger, context, account.username, config.thinkTimeFactor, screenshotPath);
         this.account = account;
         this.config = config;
     }

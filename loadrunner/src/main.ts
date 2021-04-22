@@ -11,7 +11,7 @@ import fs from "fs/promises";
 (async () => {
     SegfaultHandler.registerHandler();
 
-    const { runID, url, accounts, headless } = await parseArgs(process.argv);
+    const { runID, url, accounts, screenshotPath, headless } = await parseArgs(process.argv);
 
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
     rootLogger.info(`runID: ${runID}`);
@@ -49,7 +49,7 @@ import fs from "fs/promises";
         return browsers;
     }
 
-    const lr = new LoadRunner(browsers, runID, url, accounts);
+    const lr = new LoadRunner(browsers, runID, url, accounts, screenshotPath);
     lr.on("stopped", async () => {
         rootLogger.info("Runner has stopped.");
         statsd.decrement(RUNNERS);
@@ -72,8 +72,11 @@ import fs from "fs/promises";
     rootLogger.info(`Started all ${accounts.length * (accounts[0].pupils.length + 1)} users`);
 })();
 
-async function parseArgs(args: string[]): Promise<{ runID: string, url: string, accounts: Classroom[], headless: boolean }> {
+type ConfigType = { runID: string, url: string, accounts: Classroom[], screenshotPath: string, headless: boolean };
+
+async function parseArgs(args: string[]): Promise<ConfigType> {
     let runID: string, url: string, accounts: string;
+    let screenshotPath: string = "";
     let headless: boolean = true;
     if (args.length > 2) {
         if (args.length < 5) {
@@ -83,7 +86,10 @@ async function parseArgs(args: string[]): Promise<{ runID: string, url: string, 
         runID = args[2];
         url = args[3];
         accounts = args[4];
-        if (args.length > 5 && args[5] === "false") {
+        if (args.length > 5) {
+            screenshotPath = args[5];
+        }
+        if (args.length > 6 && args[6] === "false") {
             headless = false;
         }
     } else {
@@ -94,6 +100,7 @@ async function parseArgs(args: string[]): Promise<{ runID: string, url: string, 
             rootLogger.error("Please give RUN_ID, URL and ACCOUNTS env vars");
             process.exit(1);
         }
+        screenshotPath = process.env.SCREENSHOT_PATH || "";
         if (process.env.HEADLESS === "false") {
             headless = false;
         }
@@ -105,7 +112,7 @@ async function parseArgs(args: string[]): Promise<{ runID: string, url: string, 
     }
 
     try {
-        return { runID, url, accounts: JSON.parse(accounts), headless };
+        return { runID, url, accounts: JSON.parse(accounts), screenshotPath, headless };
     } catch (e) {
         if (e instanceof SyntaxError) {
             rootLogger.error("Error parsing accounts", e);

@@ -16,13 +16,16 @@ export default class LoadRunner extends EventEmitter {
     runID: string;
     url: string;
     accounts: Classroom[];
+    screenshotPath: string;
+
     vus: VirtualUser[] = [];
-    constructor(browsers: Browser[], runID: string, url: string, accounts: Classroom[]) {
+    constructor(browsers: Browser[], runID: string, url: string, accounts: Classroom[], screenshotPath: string) {
         super();
         this.browsers = browsers;
         this.runID = runID;
         this.url = url;
         this.accounts = accounts;
+        this.screenshotPath = screenshotPath;
     }
 
     async start() {
@@ -110,7 +113,7 @@ export default class LoadRunner extends EventEmitter {
         const logger = newLogger(account.username);
         const context = await this.getContext(logger);
 
-        const vu = new VirtualPupil(logger, context, account, config);
+        const vu = new VirtualPupil(logger, context, account, config, this.screenshotPath);
 
         this.handleVU(vu, context);
         vu.start();
@@ -122,7 +125,7 @@ export default class LoadRunner extends EventEmitter {
         const logger = newLogger(account.email);
         const context = await this.getContext(logger);
 
-        const vu = new VirtualTeacher(logger, context, account, config);
+        const vu = new VirtualTeacher(logger, context, account, config, this.screenshotPath);
 
         this.handleVU(vu, context);
         vu.start();
