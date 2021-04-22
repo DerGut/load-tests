@@ -54,7 +54,7 @@ export default class VirtualTeacher extends VirtualUser {
             await page.click("text='Unterrichten'");
             if (alternate % 2 == 0) {
                 await page.click("h4:has-text('Arbeitsplatz')");
-                await this.grade(page);
+                // await this.grade(page);
             } else {
                 await page.click("h4:has-text('Klassenraum')");
             }
