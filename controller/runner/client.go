@@ -120,12 +120,12 @@ func agentCmd(ddApiKey, runID string) string {
 	--detach \
 	--name dd-agent \
 	--network load-tests \
-	-v /var/run/docker.sock:/var/run/docker.sock:ro \
-	-v /proc/:/host/proc/:ro \
-	-v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
-	-v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
-	-v /etc/passwd:/etc/passwd:ro \
-	-p 8125:8125/udp \
+	--volume /var/run/docker.sock:/var/run/docker.sock:ro \
+	--volume /proc/:/host/proc/:ro \
+	--volume /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
+	--volume /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+	--volume /etc/passwd:/etc/passwd:ro \
+	--publish 8125:8125/udp \
 	--env DD_API_KEY=%s \
 	--env DD_TAGS=runId:%s \
 	--env DD_ENV=load-tests \
