@@ -19,10 +19,6 @@ export class TaskSeries {
         this.sessionActive = sessionActive;
     }
 
-    async getHeading(): Promise<string> {
-        return await this.page.innerText("h1");
-    }
-
     async finished(): Promise<boolean> {
         return !!await this.page.$(".taskSeries__submitButton");
     }

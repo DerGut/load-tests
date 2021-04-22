@@ -9,6 +9,7 @@ import { Logger } from "winston";
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
+    activeTaskSeries: Map<string, TaskSeries> = new Map();
     constructor(logger: Logger, context: BrowserContext, account: Pupil, config: Config, screenshotPath: string) {
         super(logger, context, account.username, config.thinkTimeFactor, screenshotPath);
         this.account = account;
@@ -67,14 +68,15 @@ export default class VirtualPupil extends VirtualUser {
                 });
             }
 
-            const taskSeries = new TaskSeries(this.logger, page, this.account.username, this.time.bind(this), this.sessionActive.bind(this));
-            
-            let heading;
             // This is not synchronous with the server. measure it for reference
-            await this.time("taskseries_heading", false, async () => {
-                heading = await taskSeries.getHeading();
+            const heading = await this.time("taskseries_heading", false, async () => {
+                return await page.innerText("h1");
             });
+
+            const taskSeries = mapGetOrSet(this.activeTaskSeries, heading, () => {
             this.logger.info(`Started taskSeries "${heading}"`);
+                return new TaskSeries(this.logger, page, this.account.username, this.time.bind(this), this.sessionActive.bind(this))
+            });
 
             while (this.sessionActive() && !(await taskSeries.finished())) {
                 if (Math.random() < 0.1) {
@@ -104,6 +106,7 @@ export default class VirtualPupil extends VirtualUser {
             await this.time("taskseries_submit", true, async () => {
                 await taskSeries.submit();
             });
+            this.activeTaskSeries.delete(heading);
             
             await page.click("button:has-text('OK')"); // dismiss modal
             statsd.increment(TASKSERIES_SUBMITTED);
@@ -216,4 +219,18 @@ export default class VirtualPupil extends VirtualUser {
 
 export async function think(time: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, time * 1000));
+}
+
+// Just a wrapper that gets/ sets a value in a way that typescript recognises 
+// that no undefined is returned
+function mapGetOrSet<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
+    const tmp: V | undefined = map.get(key);
+    if (tmp) {
+        return tmp;
+    }
+
+    const value: V = factory();
+    map.set(key, value);
+
+    return value;
 }
