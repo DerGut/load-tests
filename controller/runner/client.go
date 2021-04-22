@@ -159,7 +159,11 @@ func runnerCmd(runID, url, accounts string) string {
 
 func (rc *RemoteClient) Stop() error {
 	// Graceful shutdown allows runner to update metrics that track numbers of runners, VUs, etc.
-	err := rc.instance.RunCmd(context.TODO(), "docker stop runner")
+	// TODO: the exercise think time is probably the limiting factor here. If we really want
+	// to shut down gracefully, we either need to wait for ~5min or periodically check for shutdown
+	// events while the VU is sleeping/ thinking
+	timeout := 5 * 60 // in seconds
+	err := rc.instance.RunCmd(context.TODO(), fmt.Sprintf("docker stop --time %d runner", timeout))
 	if err != nil {
 		log.Println("Graceful shutdown failed")
 	}
