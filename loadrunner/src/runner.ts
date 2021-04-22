@@ -137,15 +137,12 @@ export default class LoadRunner extends EventEmitter {
         }
         return await browser.newContext({
             logger: {
-                isEnabled: () => true,
-                log: (name, severity, message, args) => {
-                    if (process.env.NODE_ENV !== "production") {
-                        return;
-                    }
+                isEnabled: () => process.env.NODE_ENV === "production",
+                log: (name, _severity, message, args) => {
                     if (message instanceof Error) {
                         logger.error(message);
                     } else {
-                        logger.debug(message, {severity, name, args});
+                        logger.debug(message, {name, args});
                     }
                 }
             },

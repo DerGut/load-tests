@@ -1,9 +1,9 @@
 import SegfaultHandler from "segfault-handler";
 import "dd-trace/init";
 
-import { Browser, BrowserContext, chromium, LaunchOptions } from "playwright-chromium";
+import { Browser, chromium, LaunchOptions } from "playwright-chromium";
 
-import newLogger, { root as rootLogger } from "./logger";
+import { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
 import LoadRunner from "./runner";
 import fs from "fs/promises";
@@ -16,7 +16,6 @@ import fs from "fs/promises";
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
     rootLogger.info(`runID: ${runID}`);
 
-    const pwLogger = newLogger("playwright");
     const browserConfig: LaunchOptions = { 
         headless,
         slowMo: 200,
@@ -25,15 +24,12 @@ import fs from "fs/promises";
             "--full-memory-crash-report"
         ],
         logger: {
-            isEnabled: () => true,
-            log: (name, severity, message, args) => {
-                if (process.env.NODE_ENV !== "production") {
-                    return;
-                }
+            isEnabled: () => process.env.NODE_ENV === "production",
+            log: (name, _severity, message, args) => {
                 if (message instanceof Error) {
-                    pwLogger.error(message);
+                    rootLogger.error(message);
                 } else {
-                    pwLogger.debug(message, {severity, name, args});
+                    rootLogger.debug(message, {name, args});
                 }
             }
         },

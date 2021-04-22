@@ -14,6 +14,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const root = winston.createLogger({
+    level: "debug",
     transports: [new winston.transports.Console()],
     format: winston.format.combine(...formats),
     defaultMeta: {
