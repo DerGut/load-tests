@@ -101,6 +101,10 @@ func (rc *RemoteClient) deploy(ctx context.Context, inst provisioner.Instance, s
 	case <-time.After(1 * time.Minute):
 	}
 
+	if err := inst.RunCmd(ctx, "mkdir -p /root/errors && chmod 777 /root/errors "); err != nil {
+		log.Println("Failed creating error dir")
+	}
+
 	accountsJson, err := json.Marshal(step.Accounts)
 	if err != nil {
 		return err
@@ -145,6 +149,7 @@ func runnerCmd(runID, url, accounts string) string {
 	--name runner \
 	--network load-tests \
 	--ipc=host \
+	--volume /root/errors:/home/pwuser/runner/errors \
 	--env NODE_OPTIONS=--max-old-space-size=4096 \
 	--env NODE_ENV=production \
 	--env DD_AGENT_HOST=dd-agent \
