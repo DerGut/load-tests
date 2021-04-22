@@ -8,6 +8,7 @@ import newLogger from "./logger";
 import statsd, { CLASSES, VUS } from "./statsd";
 import EventEmitter from "events";
 import { Logger } from "winston";
+import { Config } from "./vus/config";
 
 export default class LoadRunner extends EventEmitter {
     logger = newLogger("runner");
@@ -58,33 +59,75 @@ export default class LoadRunner extends EventEmitter {
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
         const vus: VirtualUser[] = [];
 
-        const logger = newLogger(classroom.teacher.email);
-        const context = await this.getContext(logger);
-        const vu = new VirtualTeacher(logger, context, classroom.teacher, {
+        const vu = await this.startVirtualTeacher(classroom.teacher, {
             pageUrl: this.url,
             thinkTimeFactor: this.drawThinkTimeFactor()
         });
-        this.handleVU(vu, context);
-        vu.start();
         vus.push(vu);
 
         for (let i = 0; i < classroom.pupils.length; i++) {
-            const pupil = classroom.pupils[i];
-
-            const logger = newLogger(pupil.username);
-            const context = await this.getContext(logger);
-            const vu = new VirtualPupil(logger, context, pupil, {
+            const vu = await this.startVirtualPupil(classroom.pupils[i], {
                 pageUrl: this.url,
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
-            this.handleVU(vu, context);
-            vu.start();
             vus.push(vu);
 
             await new Promise(resolve => setTimeout(resolve, 1 * 1000));
         }
 
         return vus;
+    }
+
+    async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {
+        const vus: VirtualUser[] = [];
+
+        const classLog = new ClassLog(classroom.pupils.length);
+
+        const vu = await this.startVirtualTeacher(classroom.teacher, {
+            pageUrl: this.url,
+            classLog: classLog,
+            className: classroom.name,
+            classSize: classroom.pupils.length,
+            thinkTimeFactor: this.drawThinkTimeFactor()
+        });
+        vus.push(vu);
+
+        for (let i = 0; i < classroom.pupils.length; i++) {
+            classLog.onClassCreated(async classCode => {
+                const vu = await this.startVirtualPupil(classroom.pupils[i], {
+                    pageUrl: this.url,
+                    classCode,
+                    thinkTimeFactor: this.drawThinkTimeFactor()
+                });
+                vus.push(vu);
+            });
+        }
+
+        return vus;
+    }
+
+    async startVirtualPupil(account: Pupil, config: Config): Promise<VirtualPupil> {
+        const logger = newLogger(account.username);
+        const context = await this.getContext(logger);
+
+        const vu = new VirtualPupil(logger, context, account, config);
+
+        this.handleVU(vu, context);
+        vu.start();
+
+        return vu;
+    }
+
+    async startVirtualTeacher(account: Teacher, config: Config): Promise<VirtualTeacher> {
+        const logger = newLogger(account.email);
+        const context = await this.getContext(logger);
+
+        const vu = new VirtualTeacher(logger, context, account, config);
+
+        this.handleVU(vu, context);
+        vu.start();
+
+        return vu;
     }
 
     async getContext(logger: Logger): Promise<BrowserContext> {
@@ -123,43 +166,6 @@ export default class LoadRunner extends EventEmitter {
                 this.logger.warning("Context was already closed", e)
             }
         });
-    }
-
-    async startNewClassroom(classroom: Classroom): Promise<VirtualUser[]> {
-        const vus: VirtualUser[] = [];
-
-        const classLog = new ClassLog(classroom.pupils.length);
-
-        const logger = newLogger(classroom.teacher.email);
-        const context = await this.getContext(logger);
-        const vu = new VirtualTeacher(logger, context, classroom.teacher, {
-            pageUrl: this.url,
-            classLog: classLog,
-            className: classroom.name,
-            classSize: classroom.pupils.length,
-            thinkTimeFactor: this.drawThinkTimeFactor()
-        });
-        this.handleVU(vu, context);
-        vu.start();
-        vus.push(vu);
-
-        for (let i = 0; i < classroom.pupils.length; i++) {
-            const pupil = classroom.pupils[i];
-            classLog.onClassCreated(async classCode => {
-                const logger = newLogger(pupil.username);
-                const context = await this.getContext(logger);
-                const vu = new VirtualPupil(logger, context, pupil, {
-                    pageUrl: this.url,
-                    classCode,
-                    thinkTimeFactor: this.drawThinkTimeFactor()
-                });
-                this.handleVU(vu, context);
-                vu.start();
-                vus.push(vu);
-            });
-        }
-
-        return vus;
     }
 
     drawThinkTimeFactor(): number {
