@@ -1,4 +1,4 @@
-import { ElementHandle, Page } from "playwright-chromium";
+import { Page } from "playwright-chromium";
 import { Logger } from "winston";
 import { think } from "../pupil";
 
@@ -112,11 +112,15 @@ export class Survey extends Exercise {
                 await this.page.click(`${divSelector} .checkboxesContainer`);
                 break;
             case "rangeSlider": // with hint and question
-                await this.page.$eval(this.selector("input"), elem => {
-                    elem.stepUp();
-                    // @ts-ignore // Event is global in browser context
-                    elem.dispatchEvent(new Event("change"));
-                });
+                const input = await this.page.waitForSelector(this.selector("input"));
+                const source = await input.boundingBox();
+                if (!source) {
+                    throw new Error("Input bounding box expected");
+                }
+                await this.page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+                await this.page.mouse.down();
+                await this.page.mouse.move(source.x + source.width / 3, source.y + source.height / 2);
+                await this.page.mouse.up();
                 break;
             default:
                 throw new Error(`Unknown subtype for Survey exercise: ${subType}`);
