@@ -112,15 +112,34 @@ export class Survey extends Exercise {
                 await this.page.click(`${divSelector} .checkboxesContainer`);
                 break;
             case "rangeSlider": // with hint and question
-                const input = await this.page.waitForSelector(this.selector("input"));
-                const source = await input.boundingBox();
-                if (!source) {
-                    throw new Error("Input bounding box expected");
+                await this.page.$eval(this.selector("input"), (elem, value) => {
+                    // React tracks the value property and stops the change event 
+                    // from propagating. It is therefore necessary to set the value 
+                    // of the underlying native DOM element. 
+                    setNativeValue(elem, value);
+
+                    // @ts-ignore
+                    elem.dispatchEvent(new Event("input", { "bubbles": true }));
+                    // @ts-ignore
+                    elem.dispatchEvent(new Event("change", { "bubbles": true }));
+
+                    // @ts-ignore
+                    function setNativeValue(element, value) {
+                        const {set: valueSetter} =
+                          Object.getOwnPropertyDescriptor(element, 'value') || {}
+                        const prototype = Object.getPrototypeOf(element)
+                        const {set: prototypeValueSetter} =
+                          Object.getOwnPropertyDescriptor(prototype, 'value') || {}
+                      
+                        if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+                          prototypeValueSetter.call(element, value)
+                        } else if (valueSetter) {
+                          valueSetter.call(element, value)
+                        } else {
+                          throw new Error('The given element does not have a value setter')
+                        }
                 }
-                await this.page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
-                await this.page.mouse.down();
-                await this.page.mouse.move(source.x + source.width / 3, source.y + source.height / 2);
-                await this.page.mouse.up();
+                }, "70");
                 break;
             default:
                 throw new Error(`Unknown subtype for Survey exercise: ${subType}`);
