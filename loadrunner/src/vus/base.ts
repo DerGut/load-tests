@@ -74,7 +74,11 @@ export default abstract class VirtualUser extends EventEmitter {
                     return Promise.reject(e);
                 }
                 
-                await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
+                try {
+                    await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
+                } catch (se) {
+                    this.logger.warning("Failed to take screenshot", se);
+                }
 
                 if (e instanceof errors.TimeoutError) {
                     this.logger.warn("Refreshing and trying again", e);
