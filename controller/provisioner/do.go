@@ -23,9 +23,10 @@ type doProvisioner struct {
 	region      string
 	dropletSize string
 	sshKeyIDs   []godo.DropletCreateSSHKey
+	debug       bool
 }
 
-func NewDO(apiToken, region, dropletSize string) Provisioner {
+func NewDO(apiToken, region, dropletSize string, debug bool) Provisioner {
 	return &doProvisioner{
 		apiToken:    apiToken,
 		region:      region,
@@ -34,6 +35,7 @@ func NewDO(apiToken, region, dropletSize string) Provisioner {
 			{ID: 22074350},
 			{ID: 26570780},
 		},
+		debug: debug,
 	}
 }
 
@@ -64,7 +66,7 @@ func (dop *doProvisioner) Provision(ctx context.Context, instanceID string) (Ins
 		return nil, err
 	}
 
-	return &doInstance{apiToken: dop.apiToken, droplet: d}, nil
+	return &doInstance{apiToken: dop.apiToken, droplet: d, debug: dop.debug}, nil
 }
 
 func createDroplet(ctx context.Context, c *godo.Client, dcr *godo.DropletCreateRequest) (*godo.Droplet, error) {
@@ -99,20 +101,21 @@ func createDroplet(ctx context.Context, c *godo.Client, dcr *godo.DropletCreateR
 type doInstance struct {
 	apiToken string
 	droplet  *godo.Droplet
+	debug    bool
 }
 
 func (doi *doInstance) RunCmd(ctx context.Context, cmd string) error {
-	return runCmd(ctx, cmd, doi.droplet)
+	return runCmd(ctx, cmd, doi.droplet, doi.debug)
 }
 
-func runCmd(ctx context.Context, cmd string, d *godo.Droplet) error {
+func runCmd(ctx context.Context, cmd string, d *godo.Droplet, debug bool) error {
 	addr, err := d.PublicIPv4()
 	if err != nil {
 		return err
 	}
 
 	select {
-	case err = <-sshRun(cmd, addr):
+	case err = <-sshRun(cmd, addr, debug):
 		return err
 	case <-ctx.Done():
 		return ctx.Err()
@@ -154,17 +157,22 @@ func waitForReachable(ctx context.Context, d *godo.Droplet) error {
 }
 
 func isReachable(d *godo.Droplet) bool {
-	err := runCmd(context.TODO(), "ls", d)
+	err := runCmd(context.TODO(), "ls", d, false)
 	return err == nil
 }
 
-func sshRun(cmd string, addr string) <-chan error {
+func sshRun(cmd, addr string, copyIO bool) <-chan error {
 	c := make(chan error)
 	go func() {
 		s, err := sshSession(addr)
 		if err != nil {
 			c <- err
 			return
+		}
+
+		if copyIO {
+			s.Stdout = os.Stdout
+			s.Stderr = os.Stderr
 		}
 
 		if err := s.Run(cmd); err != nil {

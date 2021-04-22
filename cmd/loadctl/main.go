@@ -28,7 +28,7 @@ func main() {
 	shuffle(accs)
 	runCfg := parseRunConfig(conf, accs)
 
-	p := provisioner.NewDO(conf.DoApiKey, conf.DoRegion, conf.DoSize)
+	p := provisioner.NewDO(conf.DoApiKey, conf.DoRegion, conf.DoSize, conf.Debug)
 
 	var c controller.Controller
 	if conf.Local {
