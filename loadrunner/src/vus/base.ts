@@ -75,7 +75,7 @@ export default abstract class VirtualUser extends EventEmitter {
                 try {
                     await page.screenshot({ path: `/home/pwuser/runner/errors/${this.id}.png`, fullPage: true });
                 } catch (se) {
-                    this.logger.warning("Failed to take screenshot", se);
+                    this.logger.warn("Failed to take screenshot", se);
                 }
 
                 if (e instanceof errors.TimeoutError) {

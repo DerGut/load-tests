@@ -160,7 +160,7 @@ export default class LoadRunner extends EventEmitter {
             try {
                 await context.browser()?.close();
             } catch(e) {
-                this.logger.warning("Context was already closed", e)
+                this.logger.warn("Context was already closed", e)
             }
         });
     }
