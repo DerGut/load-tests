@@ -9,6 +9,8 @@ import { Logger } from "winston";
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
+    tags: {pupil: string, class: string};
+
     // This map keeps track of taskseries that were started but moved to the background (workplace)
     // For instance, when refreshing the page on an error, we would want to return back to a 
     // task series and continue with the exercise we have last worked on
@@ -17,6 +19,10 @@ export default class VirtualPupil extends VirtualUser {
         super(logger, context, account.username, config.thinkTimeFactor, screenshotPath);
         this.account = account;
         this.config = config;
+        this.tags = {
+            pupil: account.username,
+            class: this.account.username.replace("pupil", "").replace(/t\d/, "")
+        };
     }
 
     async run(page: Page) {
@@ -106,7 +112,7 @@ export default class VirtualPupil extends VirtualUser {
                         });
                     } while (!done);
                     this.logger.info("Submitted exercise");
-                    statsd.increment(EXERCISES_SUBMITTED);
+                    statsd.increment(EXERCISES_SUBMITTED, this.tags);
 
                     await this.think();
                 }
@@ -123,7 +129,7 @@ export default class VirtualPupil extends VirtualUser {
             this.activeTaskSeries.delete(heading);
             
             await page.click("button:has-text('OK')"); // dismiss modal
-            statsd.increment(TASKSERIES_SUBMITTED);
+            statsd.increment(TASKSERIES_SUBMITTED, this.tags);
             if (await this.investmentAvailable(page)) {
                 await this.think();
                 await this.think();
