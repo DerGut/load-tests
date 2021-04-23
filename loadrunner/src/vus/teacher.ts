@@ -124,11 +124,7 @@ export default class VirtualTeacher extends VirtualUser {
 
         await this.time("login", true, async () => {
             await page.click("button:has-text('Einloggen')");
-            const result = await page.waitForSelector(":is(text='Einloggen nicht möglich! Überprüfe Benutzernamen/Email und Passwort!', text='Home')");
-            const text = await result.textContent();
-            if (!text || text.trim() !== "Home") {
-                throw new Error("Login failed");
-            }
+            await page.waitForSelector("text='Home'");
         });
         await this.think();
     }

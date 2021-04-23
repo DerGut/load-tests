@@ -181,12 +181,7 @@ export default class VirtualPupil extends VirtualUser {
 
         await this.time("login", true, async () => {
             await page.click("button:has-text('Einloggen')");
-            const result = await page.waitForSelector(":is(text='Einloggen nicht möglich! Überprüfe Benutzernamen/Email und Passwort!', text='Aufträge')");
-            const text = await result.textContent();
-            this.logger.info(text);
-            if (!text || text.trim() !== "Aufträge") {
-                throw new Error("Login failed");
-            }
+            await page.waitForSelector("text='Aufträge'");
         });
         await this.think();
     }
