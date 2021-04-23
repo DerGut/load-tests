@@ -47,6 +47,8 @@ export class TaskSeries {
             return await this.page.getAttribute(`${exerciseSelector} div > div:nth-of-type(3)`, "class");
         });
 
+        this.logger.debug(`Next exercise is of type: ${type}`);
+
         switch (type) {
             case "freeText":
                 return new FreeText(this.logger, this.page, this.pupilId, this.exerciseIndex);
