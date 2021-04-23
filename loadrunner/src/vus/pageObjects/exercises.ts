@@ -44,21 +44,20 @@ export abstract class Exercise {
     }
 
     async evaluation(): Promise<boolean> {
-        const evaluation = await Promise.race([
-            this.page.waitForSelector("svg.success__checkmark").catch(),
-            this.page.waitForSelector(".ppSwal").catch(),
-            this.page.waitForSelector(".exerciseHints").catch(), // wrong answer, hints displayed
-        ]);
+        const evaluation = await this.page.waitForSelector(":is(svg.success__checkmark, .ppSwal, .exerciseHints)");
 
         const classes = await evaluation.getAttribute("class");
         if (!classes) {
             throw new Error("Wrong element");
         } else if (classes.includes("success__checkmark")) {
+            this.logger.debug("Success");
             return true;
         } else if (classes.includes("ppSwal")) {
+            this.logger.debug("Modal, dismissing");
             await this.page.click("button:has-text('OK')");
             return true;
         } else if (classes.includes("exerciseHints")) {
+            this.logger.debug("Exercise hints...");
             return false;
         } else {
             throw new Error(`Unknown evaluation: ${classes}`);
