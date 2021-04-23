@@ -9,6 +9,9 @@ import { Logger } from "winston";
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
+    // This map keeps track of taskseries that were started but moved to the background (workplace)
+    // For instance, when refreshing the page on an error, we would want to return back to a 
+    // task series and continue with the exercise we have last worked on
     activeTaskSeries: Map<string, TaskSeries> = new Map();
     constructor(logger: Logger, context: BrowserContext, account: Pupil, config: Config, screenshotPath: string) {
         super(logger, context, account.username, config.thinkTimeFactor, screenshotPath);
@@ -48,6 +51,7 @@ export default class VirtualPupil extends VirtualUser {
 
         await this.think();
         await this.think();
+
         await this.retryRefreshing(page, async () => {
             this.logger.info("Starting to play");
             await this.play(page);
@@ -61,8 +65,6 @@ export default class VirtualPupil extends VirtualUser {
             if (await page.$("button:has-text('Zum Arbeitsplatz')")) {
                 this.logger.info("Back to workplace");
                 await page.click("button:has-text('Zum Arbeitsplatz')");
-                // TODO: when continuing an already started task series, we need to find the 
-                // most recent exercise we worked on/ the one we have feedback on
             } else {
                 this.logger.info("Accepting taskseries");
                 await this.time("taskseries_accept", true, async () => {
@@ -84,6 +86,7 @@ export default class VirtualPupil extends VirtualUser {
 
             while (this.sessionActive() && !(await taskSeries.finished())) {
                 await this.think();
+
                 if (Math.random() < 0.1) {
                     this.logger.info("Sending chat message");
                     await this.sendChatMessage(page);
@@ -94,6 +97,9 @@ export default class VirtualPupil extends VirtualUser {
                     await exercise.work(this.thinkTimeFactor);
                     let done;
                     do {
+                        // Because we don't actually solve any of the exercises but try to submit
+                        // an empty 'solution', we sometimes need to hit submit multiple times to 
+                        // dismiss hints, warnings, etc.
                         await this.time("exercise_submit", true, async () => {
                             await this.think();
                             done = await exercise.submit();
@@ -109,6 +115,7 @@ export default class VirtualPupil extends VirtualUser {
             }
 
             await this.think();
+
             this.logger.info("Submitting task series");
             await this.time("taskseries_submit", true, async () => {
                 await taskSeries.submit();
@@ -165,6 +172,7 @@ export default class VirtualPupil extends VirtualUser {
         await page.type("[placeholder='Passwort']", this.account.password, { delay: typeDelay });
 
         await this.think();
+
         await this.time("login", true, async () => {
             await page.click("button:has-text('Einloggen')");
             const result = await Promise.race([
