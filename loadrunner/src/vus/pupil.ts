@@ -103,11 +103,11 @@ export default class VirtualPupil extends VirtualUser {
                     await exercise.work(this.thinkTimeFactor);
                     let done;
                     do {
+                        await this.think();
                         // Because we don't actually solve any of the exercises but try to submit
                         // an empty 'solution', we sometimes need to hit submit multiple times to 
                         // dismiss hints, warnings, etc.
                         await this.time("exercise_submit", true, async () => {
-                            await this.think();
                             done = await exercise.submit();
                         });
                     } while (!done);
