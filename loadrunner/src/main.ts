@@ -15,6 +15,9 @@ import fs from "fs/promises";
 
     rootLogger.info(`Testing ${url} with ${accounts.length} classes`);
     rootLogger.info(`runID: ${runID}`);
+    if (screenshotPath === "") {
+        rootLogger.info("Not taking screenshot");
+    }
 
     const browserConfig: LaunchOptions = { 
         headless,
