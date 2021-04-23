@@ -55,7 +55,10 @@ export default class VirtualTeacher extends VirtualUser {
             await page.click("text='Unterrichten'");
             if (alternate % 2 == 0) {
                 await page.click("h4:has-text('Arbeitsplatz')");
-                // await this.grade(page);
+                await page.waitForSelector("#teacher__workspaceContainer")
+                if (!await page.$("text='Gerade nichts zu tun'")) {
+                    await this.grade(page);
+                }
             } else {
                 await page.click("h4:has-text('Klassenraum')");
             }
@@ -99,10 +102,9 @@ export default class VirtualTeacher extends VirtualUser {
     }
 
     async grade(page: Page) {
-        await page.waitForSelector("#teacher__workspaceContainer")
-        if (await page.$("text='Gerade nichts zu tun'")) {
-            return;
-        }
+        // Click on exercise to grade in case help requests are open (we don't want those)
+        await page.click(".exercise__name");
+
         this.logger.info("Grading exercise");
         await page.fill("#teacherWorkspaceArea textarea", "abcdefghijklmnopqrstuvwxyz!!!");
         await page.click("button:has-text('Bewerten')"); // TODO: doch graden?
