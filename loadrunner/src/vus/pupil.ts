@@ -156,7 +156,7 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async createCompany(page: Page, name: string) {
-        await page.fill(".foundCompany__input input", name);
+        await page.type(".foundCompany__input input", name);
         await this.think();
         await this.think();
         await this.time("company", true, async () => {
