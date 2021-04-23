@@ -7,7 +7,10 @@ export abstract class Exercise {
     page: Page;
     pupilId: string;
     index: number;
-    avgWorkDurationSec: number = -1;
+
+    // This number includes the time spent for reading a text, watching a video etc. before
+    // starting the actual exercise. So these should be big. -1 because this class is abstract.
+    avgWorkDurationMin: number = -1;
     constructor(logger: Logger, page: Page, pupilId: string, index: number) {
         this.logger = logger;
         this.page = page;
@@ -24,9 +27,9 @@ export abstract class Exercise {
     // Waits between (avgWorkDurationSec/4) and (6*avgWorkDurationSec/4)
     async think(thinkTimeFactor: number) {
         const rand = Math.random() + 0.5;
-        const thinkTime = thinkTimeFactor * rand * this.avgWorkDurationSec;
-        this.logger.info(`thinking ${thinkTime}sec`);
-        await think(thinkTime);
+        const thinkTimeSec = thinkTimeFactor * rand * this.avgWorkDurationMin * 60;
+        this.logger.info(`thinking ${thinkTimeSec}sec`);
+        await think(thinkTimeSec);
     }
 
     async work(thinkTimeFactor: number) {
@@ -77,12 +80,12 @@ export abstract class Exercise {
         await this.page.click(this.selector("button:has-text('Fragen')"));
         await this.page.fill("textarea", "qwertyuiopasdfghjkl");
         await this.page.click("text='Frage stellen!'");
-        // await this.page.click(this.selector("text=minimieren"));
+        // await this.page.click(this.selector("'text=minimieren'"));
     }
 }
 
 export class FreeText extends Exercise {
-    avgWorkDurationSec = 300;
+    avgWorkDurationMin = 15;
     async work(thinkTimeFactor: number) {
         if (Math.random() < 0.3) {
             await this.requestHelp();
@@ -98,7 +101,7 @@ export class FreeText extends Exercise {
 }
 
 export class Survey extends Exercise {
-    avgWorkDurationSec = 60;
+    avgWorkDurationMin = 5;
     async work(thinkTimeFactor: number) {
         await this.think(thinkTimeFactor);
         if (Math.random() < 0.2) {
@@ -126,19 +129,19 @@ export class Survey extends Exercise {
                     // @ts-ignore
                     function setNativeValue(element, value) {
                         const {set: valueSetter} =
-                          Object.getOwnPropertyDescriptor(element, 'value') || {}
-                        const prototype = Object.getPrototypeOf(element)
+                          Object.getOwnPropertyDescriptor(element, 'value') || {};
+                        const prototype = Object.getPrototypeOf(element);
                         const {set: prototypeValueSetter} =
-                          Object.getOwnPropertyDescriptor(prototype, 'value') || {}
+                          Object.getOwnPropertyDescriptor(prototype, 'value') || {};
                       
                         if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
-                          prototypeValueSetter.call(element, value)
+                          prototypeValueSetter.call(element, value);
                         } else if (valueSetter) {
-                          valueSetter.call(element, value)
+                          valueSetter.call(element, value);
                         } else {
-                          throw new Error('The given element does not have a value setter')
+                          throw new Error('The given element does not have a value setter');
                         }
-                }
+                      }
                 }, "70");
                 break;
             default:
@@ -153,7 +156,7 @@ export class Survey extends Exercise {
 }
 
 export class MultipleChoice extends Exercise {
-    avgWorkDurationSec = 60;
+    avgWorkDurationMin = 5;
 
     async work(thinkTimeFactor: number) {
         await this.think(thinkTimeFactor);
@@ -171,7 +174,7 @@ export class MultipleChoice extends Exercise {
 }
 
 export class InputField extends Exercise {
-    avgWorkDurationSec = 20;
+    avgWorkDurationMin = 60;
 
     async work(thinkTimeFactor: number) {
         await this.think(thinkTimeFactor);

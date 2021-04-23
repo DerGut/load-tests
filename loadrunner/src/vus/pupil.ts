@@ -31,9 +31,11 @@ export default class VirtualPupil extends VirtualUser {
             await this.retryRefreshing(page, async () => {
                 this.logger.info("Logging into account");
                 await page.fill("[placeholder=Klassencode]", classCode);
+                await this.think();
                 await page.click("button:has-text('Los')");
                 await this.register(page, this.account.username, this.account.password);
             });
+            await this.think();
             await this.retryRefreshing(page, async () => {
                 // TODO: after refresh we need to login first?
                 await this.createCompany(page, this.account.company);
@@ -44,6 +46,8 @@ export default class VirtualPupil extends VirtualUser {
             });
         }
 
+        await this.think();
+        await this.think();
         await this.retryRefreshing(page, async () => {
             this.logger.info("Starting to play");
             await this.play(page);
@@ -79,6 +83,7 @@ export default class VirtualPupil extends VirtualUser {
             });
 
             while (this.sessionActive() && !(await taskSeries.finished())) {
+                await this.think();
                 if (Math.random() < 0.1) {
                     this.logger.info("Sending chat message");
                     await this.sendChatMessage(page);
@@ -90,6 +95,7 @@ export default class VirtualPupil extends VirtualUser {
                     let done;
                     do {
                         await this.time("exercise_submit", true, async () => {
+                            await this.think();
                             done = await exercise.submit();
                         });
                     } while (!done);
@@ -102,6 +108,7 @@ export default class VirtualPupil extends VirtualUser {
                 await this.think();
             }
 
+            await this.think();
             this.logger.info("Submitting task series");
             await this.time("taskseries_submit", true, async () => {
                 await taskSeries.submit();
@@ -111,6 +118,8 @@ export default class VirtualPupil extends VirtualUser {
             await page.click("button:has-text('OK')"); // dismiss modal
             statsd.increment(TASKSERIES_SUBMITTED);
             if (await this.investmentAvailable(page)) {
+                await this.think();
+                await this.think();
                 await this.time("invest", false, async () => {
                     await this.invest(page);
                 });
@@ -121,8 +130,11 @@ export default class VirtualPupil extends VirtualUser {
     async register(page: Page, username: string, password: string) {
         const typeDelay = 200;
         await page.type("[placeholder='Benutzername']", username, { delay: typeDelay });
+        await this.think();
         await page.type("[placeholder='Passwort']:nth-of-type(1)", password, { delay: typeDelay });
+        await this.think();
         await page.type("[placeholder='Passwort wiederholen'],[placeholder='Passwort']:nth-of-type(2)", password, { delay: typeDelay });
+        await this.think();
         
         await this.time("register", true, async () => {
             await page.click("button:has-text('Bereit?')");
@@ -132,6 +144,8 @@ export default class VirtualPupil extends VirtualUser {
 
     async createCompany(page: Page, name: string) {
         await page.fill(".foundCompany__input input", name);
+        await this.think();
+        await this.think();
         await this.time("company", true, async () => {
             await page.click("button:has-text('Los geht')");
             await page.waitForSelector("text='Übersicht'");
@@ -150,6 +164,7 @@ export default class VirtualPupil extends VirtualUser {
         await page.type("[placeholder='Nutzername/Email']", this.account.username, { delay: typeDelay });
         await page.type("[placeholder='Passwort']", this.account.password, { delay: typeDelay });
 
+        await this.think();
         await this.time("login", true, async () => {
             await page.click("button:has-text('Einloggen')");
             const result = await Promise.race([
@@ -171,8 +186,14 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async invest(page: Page) {
+        await this.think();
         await page.click(".office");
+        await this.think();
+        await this.think();
+        await this.think();
+        await this.think();
         await page.click(".officeSelection__button");
+        await this.think();
         await page.click("#jobs__0"); // back to tasks
     }
 
@@ -210,8 +231,10 @@ export default class VirtualPupil extends VirtualUser {
 
     async sendChatMessage(page: Page) {
         await page.click("a:has-text('Nachrichten')");
+        await this.think();
         await page.fill(".chat textarea", "asdfghjkl");
         await page.click(".chat button");
+        await this.think();
         await page.click("a:has-text('Nachrichten')");
         // TODO: Feedback erhalten (>gehe zur Aufgabe<) erscheint in Chat
     }
