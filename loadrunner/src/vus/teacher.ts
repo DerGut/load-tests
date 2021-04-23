@@ -103,6 +103,9 @@ export default class VirtualTeacher extends VirtualUser {
 
     async grade(page: Page) {
         // Click on exercise to grade in case help requests are open (we don't want those)
+        if (!await page.$(".exercise__name")) {
+            return;
+        }
         await page.click(".exercise__name");
 
         this.logger.info("Grading exercise");
