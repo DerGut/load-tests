@@ -65,17 +65,17 @@ export abstract class Exercise {
     }
 
     async getHint() {
-        console.log("getting hint");
+        this.logger.info("getting hint");
         const button = await this.page.waitForSelector(this.selector("button:has-text('Tipp')"));
         if (await button.isEnabled()) {
             await button.click();
         } else {
-            console.log("is not enabled...");
+            this.logger.info("is not enabled...");
         }
     }
 
     async requestHelp() {
-        console.log("Requesting help");
+        this.logger.info("Requesting help");
         await this.page.click(this.selector("button:has-text('Fragen')"));
         await this.page.fill("textarea", "qwertyuiopasdfghjkl");
         await this.page.click("text='Frage stellen!'");
