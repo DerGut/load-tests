@@ -156,9 +156,10 @@ export default class VirtualPupil extends VirtualUser {
     }
 
     async createCompany(page: Page, name: string) {
+        await this.think();
         await page.type(".foundCompany__input input", name);
         await this.think();
-        await this.think();
+        await page.click(".foundCompany__logo");
         await this.time("company", true, async () => {
             await page.click("button:has-text('Los geht')");
             await page.waitForSelector("text='Übersicht'");
