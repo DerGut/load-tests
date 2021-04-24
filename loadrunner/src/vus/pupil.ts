@@ -157,7 +157,7 @@ export default class VirtualPupil extends VirtualUser {
 
     async createCompany(page: Page, name: string) {
         await this.think();
-        this.logger.debug("Creating new company: ", name);
+        this.logger.debug(`Creating new company: ${name}`);
         await page.click(".foundCompany__input input");
         await page.type(".foundCompany__input input", name, { delay: 200 });
         await this.think();
