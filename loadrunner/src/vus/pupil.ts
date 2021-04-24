@@ -149,7 +149,7 @@ export default class VirtualPupil extends VirtualUser {
         await page.type("[placeholder='Passwort wiederholen'],[placeholder='Passwort']:nth-of-type(2)", password, { delay: typeDelay });
         await this.think();
         
-        await this.time("register", true, async () => {
+        await this.time("register_pupil", true, async () => {
             await page.click("button:has-text('Bereit?')");
             await page.waitForSelector(`text='Hallo ${username}!'`);
         });
@@ -179,7 +179,7 @@ export default class VirtualPupil extends VirtualUser {
 
         await this.think();
 
-        await this.time("login", true, async () => {
+        await this.time("login_pupil", true, async () => {
             await page.click("button:has-text('Einloggen')");
             await page.waitForSelector("text='Aufträge'");
         });
