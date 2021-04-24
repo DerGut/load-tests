@@ -94,6 +94,14 @@ export default class VirtualPupil extends VirtualUser {
                 if (!await taskSeries.canProceed()) {
                     const exercise = await taskSeries.nextExercise();
                     await exercise.work(this.thinkTimeFactor);
+
+                    while (await exercise.hasHint()) {
+                        await this.think();
+                        await this.time("exercise_hint", true, async () => {
+                            await exercise.getHint();
+                        });
+                    }
+
                     let done;
                     do {
                         await this.think();

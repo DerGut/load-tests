@@ -42,7 +42,7 @@ export abstract class Exercise {
     }
 
     async evaluation(): Promise<boolean> {
-        const evaluation = await this.page.waitForSelector(":is(svg.success__checkmark, .ppSwal, .exerciseHints)");
+        const evaluation = await this.page.waitForSelector(":is(svg.success__checkmark, .ppSwal)");
 
         const classes = await evaluation.getAttribute("class");
         if (!classes) {
@@ -54,22 +54,19 @@ export abstract class Exercise {
             this.logger.debug("Modal, dismissing");
             await this.page.click("button:has-text('OK')");
             return true;
-        } else if (classes.includes("exerciseHints")) {
-            this.logger.debug("Exercise hints...");
-            return false;
         } else {
             throw new Error(`Unknown evaluation: ${classes}`);
         }
     }
 
+    async hasHint(): Promise<boolean> {
+        await this.page.waitForSelector(this.selector(".exercise__hintButton"));
+        return !await this.page.$(this.selector(".exercise__hintButton.-disabled"));
+    }
+
     async getHint() {
         this.logger.info("getting hint");
-        const button = await this.page.waitForSelector(this.selector("button:has-text('Tipp')"));
-        if (await button.isEnabled()) {
-            await button.click();
-        } else {
-            this.logger.info("is not enabled...");
-        }
+        await this.page.click(this.selector("button.exercise__hintButton"));
     }
 
     async requestHelp() {
