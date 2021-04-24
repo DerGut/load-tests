@@ -248,7 +248,8 @@ export default class VirtualPupil extends VirtualUser {
 }
 
 export async function think(time: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, time * 1000));
+    // return new Promise(resolve => setTimeout(resolve, time * 1000));
+    return new Promise(resolve => setTimeout(resolve, 1000));
 }
 
 // Just a wrapper that gets/ sets a value in a way that typescript recognises 
