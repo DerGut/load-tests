@@ -142,7 +142,7 @@ func sizeClassroom(c *Classroom, classSize int) error {
 	return nil
 }
 
-func Restore(ctx context.Context, dbUri string, archivePath string) error {
+func Restore(ctx context.Context, dbUri, archivePath string, copyIO bool) error {
 	cmd := exec.CommandContext(
 		ctx,
 		"mongorestore",
@@ -152,8 +152,10 @@ func Restore(ctx context.Context, dbUri string, archivePath string) error {
 		"--nsFrom="+nsFrom,
 		"--nsTo="+nsTo,
 	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if copyIO {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	return cmd.Run()
 }
