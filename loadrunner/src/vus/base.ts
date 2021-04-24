@@ -1,4 +1,5 @@
 import EventEmitter from "events";
+import fs from "fs";
 import { BrowserContext, errors, Page } from "playwright-chromium";
 import { Logger } from "winston";
 import statsd, { ERRORS } from "../statsd";
@@ -75,7 +76,7 @@ export default abstract class VirtualUser extends EventEmitter {
                 }
                 
                 if (this.screenshotPath !== "") {
-                    await this.takeScreenshot(page);
+                    await this.recordPage(page);
                 }
 
                 if (e instanceof errors.TimeoutError) {
@@ -90,15 +91,24 @@ export default abstract class VirtualUser extends EventEmitter {
         return Promise.reject();
     }
 
-    async takeScreenshot(page: Page) {
+    async recordPage(page: Page) {
+        const filename = this.filename();
+        const html = await page.innerHTML("html");
         try {
-            await page.screenshot({ path: this.screenshotFile(), fullPage: true });
+            fs.writeFile(filename + ".html", html, (err) => {
+                this.logger.warn("Failed writing file:", err);
+            });
+        } catch (we) {
+            this.logger.warn("Failed to write html dump", we);
+        }
+        try {
+            await page.screenshot({ path:  filename + ".png", fullPage: true });
         } catch (se) {
             this.logger.warn("Failed to take screenshot", se);
         }
     }
 
-    screenshotFile(): string {
-        return `${this.screenshotPath}/${this.id}-${new Date().toString()}.png`;
+    filename(): string {
+        return `${this.screenshotPath}/${this.id}-${new Date().toString()}`;
     }
 }
