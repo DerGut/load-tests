@@ -85,7 +85,7 @@ func createDroplet(ctx context.Context, c *godo.Client, dcr *godo.DropletCreateR
 
 	if action != nil {
 		_ = util.WaitForActive(ctx, c, action.HREF)
-		d, _, err = c.Droplets.Get(ctx, d.ID)
+		dTmp, _, err := c.Droplets.Get(ctx, d.ID)
 		if err != nil {
 			log.Println("Failed waiting for droplet to become active, destroying it:", d.Name)
 			if _, err := c.Droplets.Delete(context.TODO(), d.ID); err != nil {
@@ -93,6 +93,7 @@ func createDroplet(ctx context.Context, c *godo.Client, dcr *godo.DropletCreateR
 			}
 			return nil, err
 		}
+		d = dTmp
 	}
 
 	return d, nil
