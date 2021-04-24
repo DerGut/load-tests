@@ -76,7 +76,7 @@ export default class VirtualPupil extends VirtualUser {
                 await this.time("taskseries_accept", true, async () => {
                     // TODO: double check
                     await page.click("text=Annehmen");
-                    await page.waitForSelector("#taskSeries");
+                    await page.waitForSelector(":is(#taskSeries, .revision)");
                 });
             }
 
