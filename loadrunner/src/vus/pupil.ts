@@ -133,9 +133,8 @@ export default class VirtualPupil extends VirtualUser {
             if (await this.investmentAvailable(page)) {
                 await this.think();
                 await this.think();
-                await this.time("invest", false, async () => {
                     await this.invest(page);
-                });
+
             }
         }
     }
@@ -200,9 +199,11 @@ export default class VirtualPupil extends VirtualUser {
         await this.think();
         await this.think();
         await this.think();
+        this.time("invest", false, async () => {
         await page.click(".officeSelection__button");
-        await this.think();
         await page.click("#jobs__0"); // back to tasks
+            await page.waitForSelector("text='Aufträge'");
+        });
     }
 
     async workExercise(page: Page) {
