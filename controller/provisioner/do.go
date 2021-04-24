@@ -134,13 +134,14 @@ func (doi *doInstance) String() string {
 }
 
 const (
-	backoffModifier = 1 * time.Second
-	maxTries        = 10
+	// ufw on the server side limits SSH connection attempts and blocks after 6 attempts within 30s.
+	// We therefore want to ensure no more attempts are made within a 30s period.
+	backoffModifier = 10 * time.Second
+	maxTries        = 5
 )
 
 // waitForReachable checks the instance for SSH readiness with exponential backoff.
 func waitForReachable(ctx context.Context, d *godo.Droplet) error {
-	time.Sleep(5 * time.Second)
 	for i := 0.0; i < maxTries; i++ {
 		if isReachable(d) {
 			return nil
@@ -148,7 +149,7 @@ func waitForReachable(ctx context.Context, d *godo.Droplet) error {
 		backoff := time.Duration(math.Pow(2.0, i)) * backoffModifier
 		log.Println(d.Name, "not yet reachable, trying again in", backoff)
 		select {
-		case <-time.After(backoff): // 1s to 512s
+		case <-time.After(backoff): // 10s to 160s
 		case <-ctx.Done():
 			return ctx.Err()
 		}
