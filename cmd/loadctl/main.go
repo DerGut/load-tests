@@ -70,7 +70,7 @@ func setupAccounts(conf *config.Config) []accounts.Classroom {
 	}
 
 	if !conf.NoReset {
-		restoreDump(conf.DbUri)
+		restoreDump(conf.DbUri, conf.Debug)
 	}
 
 	return accs
@@ -128,11 +128,11 @@ func maxConcurrency(levels controller.LoadLevels) int {
 	return max
 }
 
-func restoreDump(dbUri string) {
+func restoreDump(dbUri string, debug bool) {
 	log.Println("Resetting MongoDB instance with dumped data")
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	if err := accounts.Restore(ctx, dbUri, accounts.DefaultDumpFile); err != nil {
+	if err := accounts.Restore(ctx, dbUri, accounts.DefaultDumpFile, debug); err != nil {
 		log.Fatalln("Failed to restore dump:", err)
 	}
 }
