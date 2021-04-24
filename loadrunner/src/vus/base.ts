@@ -47,8 +47,7 @@ export default abstract class VirtualUser extends EventEmitter {
     async think() {
         const rand = Math.random() + 0.5; // 0.5 to 1.5
         const thinkTime = rand * this.thinkTimeFactor * 10 * 1000;
-        // return new Promise(resolve => setTimeout(resolve, thinkTime));
-        return new Promise(resolve => setTimeout(resolve, 1000));
+        return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 
     async time<T>(label: string, sync: boolean = false, fn: () => Promise<T>): Promise<T> {
