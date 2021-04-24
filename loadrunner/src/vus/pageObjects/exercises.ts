@@ -6,22 +6,20 @@ export abstract class Exercise {
     logger: Logger;
     page: Page;
     pupilId: string;
-    index: number;
 
     // This number includes the time spent for reading a text, watching a video etc. before
     // starting the actual exercise. So these should be big. -1 because this class is abstract.
     avgWorkDurationMin: number = -1;
-    constructor(logger: Logger, page: Page, pupilId: string, index: number) {
+    constructor(logger: Logger, page: Page, pupilId: string) {
         this.logger = logger;
         this.page = page;
         this.pupilId = pupilId;
-        this.index = index;
     }
 
     abstract submit(): Promise<boolean>;
 
     selector(selector: string): string {
-        return `:nth-match(.exercise, ${this.index}) ${selector}`;
+        return `.subSection:nth-last-child(1) .exercise ${selector}`;
     }
 
     // Waits between (avgWorkDurationSec/4) and (6*avgWorkDurationSec/4)

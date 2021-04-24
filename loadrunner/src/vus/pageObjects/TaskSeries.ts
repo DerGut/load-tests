@@ -10,7 +10,6 @@ export class TaskSeries {
     pupilId: string;
     time: timeFunctionType;
     sessionActive: () => boolean;
-    exerciseIndex: number = 0;
     constructor(logger: Logger, page: Page, pupilId: string, timeFunction: timeFunctionType, sessionActive: () => boolean) {
         this.logger = logger;
         this.page = page;
@@ -37,8 +36,7 @@ export class TaskSeries {
     }
 
     async nextExercise(): Promise<Exercise> {
-        this.exerciseIndex++;
-        const exerciseSelector = `:nth-match(.exercise, ${this.exerciseIndex})`;
+        const exerciseSelector = ".subSection:nth-last-child(1) .exercise";
 
         const id = await this.page.getAttribute(exerciseSelector, "id");
         this.logger.info(`Next exercise: ${id}`);
@@ -51,13 +49,13 @@ export class TaskSeries {
 
         switch (type) {
             case "freeText":
-                return new FreeText(this.logger, this.page, this.pupilId, this.exerciseIndex);
+                return new FreeText(this.logger, this.page, this.pupilId);
             case "survey":
-                return new Survey(this.logger, this.page, this.pupilId, this.exerciseIndex);
+                return new Survey(this.logger, this.page, this.pupilId);
             case "multipleChoice":
-                return new MultipleChoice(this.logger, this.page, this.pupilId, this.exerciseIndex);
+                return new MultipleChoice(this.logger, this.page, this.pupilId);
             case "input__Field":
-                return new InputField(this.logger, this.page, this.pupilId, this.exerciseIndex);
+                return new InputField(this.logger, this.page, this.pupilId);
             default:
                 throw new Error(`Exercise type "${type}" not implemented`);
         }

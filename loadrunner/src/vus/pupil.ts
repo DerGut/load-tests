@@ -10,11 +10,6 @@ export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
     tags: {pupil: string, class: string};
-
-    // This map keeps track of taskseries that were started but moved to the background (workplace)
-    // For instance, when refreshing the page on an error, we would want to return back to a 
-    // task series and continue with the exercise we have last worked on
-    activeTaskSeries: Map<string, TaskSeries> = new Map();
     constructor(logger: Logger, context: BrowserContext, account: Pupil, config: Config, screenshotPath: string) {
         super(logger, context, account.username, config.thinkTimeFactor, screenshotPath);
         this.account = account;
@@ -85,10 +80,8 @@ export default class VirtualPupil extends VirtualUser {
                 return await page.innerText("h1");
             });
 
-            const taskSeries = mapGetOrSet(this.activeTaskSeries, heading, () => {
             this.logger.info(`Started taskSeries "${heading}"`);
-                return new TaskSeries(this.logger, page, this.account.username, this.time.bind(this), this.sessionActive.bind(this))
-            });
+            const taskSeries = new TaskSeries(this.logger, page, this.account.username, this.time.bind(this), this.sessionActive.bind(this));
 
             while (this.sessionActive() && !(await taskSeries.finished())) {
                 await this.think();
@@ -126,7 +119,6 @@ export default class VirtualPupil extends VirtualUser {
             await this.time("taskseries_submit", true, async () => {
                 await taskSeries.submit();
             });
-            this.activeTaskSeries.delete(heading);
             
             await page.click("button:has-text('OK')"); // dismiss modal
             statsd.increment(TASKSERIES_SUBMITTED, this.tags);
@@ -250,18 +242,4 @@ export default class VirtualPupil extends VirtualUser {
 export async function think(time: number): Promise<void> {
     // return new Promise(resolve => setTimeout(resolve, time * 1000));
     return new Promise(resolve => setTimeout(resolve, 1000));
-}
-
-// Just a wrapper that gets/ sets a value in a way that typescript recognises 
-// that no undefined is returned
-function mapGetOrSet<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
-    const tmp: V | undefined = map.get(key);
-    if (tmp) {
-        return tmp;
-    }
-
-    const value: V = factory();
-    map.set(key, value);
-
-    return value;
 }
