@@ -239,10 +239,9 @@ export default class VirtualPupil extends VirtualUser {
         await page.click("a:has-text('Nachrichten')");
         await this.think();
         await page.fill(".chat textarea", "asdfghjkl");
-        await page.click(".chat button");
+        await page.click(".chat button.-green");
         await this.think();
         await page.click("a:has-text('Nachrichten')");
-        // TODO: Feedback erhalten (>gehe zur Aufgabe<) erscheint in Chat
     }
 }
 
