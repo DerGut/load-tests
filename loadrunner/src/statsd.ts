@@ -18,6 +18,7 @@ const RUNNERS = "running.runners";
 const CLASSES = "running.classes";
 const VUS = "running.vus";
 const ERRORS = "errors";
+const OPERATIONS = "ops";
 const EXERCISES_SUBMITTED = "submitted.exercices";
 const TASKSERIES_SUBMITTED = "submitted.taskseries";
 
@@ -26,6 +27,7 @@ export {
     CLASSES,
     VUS,
     ERRORS,
+    OPERATIONS,
     EXERCISES_SUBMITTED,
     TASKSERIES_SUBMITTED,
 }

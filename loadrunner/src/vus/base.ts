@@ -2,7 +2,7 @@ import EventEmitter from "events";
 import fs from "fs";
 import { BrowserContext, errors, Page } from "playwright-chromium";
 import { Logger } from "winston";
-import statsd, { ERRORS } from "../statsd";
+import statsd, { ERRORS, OPERATIONS } from "../statsd";
 
 export default abstract class VirtualUser extends EventEmitter {
     logger: Logger;
@@ -53,7 +53,7 @@ export default abstract class VirtualUser extends EventEmitter {
 
     async time<T>(label: string, sync: boolean = false, fn: () => Promise<T>): Promise<T> {
         if (sync) {
-            statsd.increment("ops");
+            statsd.increment(OPERATIONS);
         }
 
         const intrumented = statsd.asyncDistTimer(fn, label);
