@@ -157,7 +157,7 @@ export default class VirtualTeacher extends VirtualUser {
         await page.click(".customDropdown:has-text('Vorbereiten')");
         await page.click("h4:has-text('Material')");
 
-        const units = ["aiImpact", "aiIntro", "mlIntro", "mlPrincipals"];
+        const units = ["aiImpact", "privacyLeavingData"];
         for (let i = 0; i < units.length; i++) {
             await page.click(`#${units[i]}`);
             await page.click("button:has-text('Zur Klasse hinzufügen')");
