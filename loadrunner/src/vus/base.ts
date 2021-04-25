@@ -1,20 +1,20 @@
 import EventEmitter from "events";
 import fs from "fs";
-import { BrowserContext, errors, Page } from "playwright-chromium";
+import { errors, Page } from "playwright-chromium";
 import { Logger } from "winston";
 import statsd, { ERRORS, OPERATIONS } from "../statsd";
 
 export default abstract class VirtualUser extends EventEmitter {
     logger: Logger;
-    context: BrowserContext;
+    page: Page;
     thinkTimeFactor: number;
     active: boolean = true;
     id: string;
     screenshotPath: string;
-    constructor(logger: Logger, browserContext: BrowserContext, id: string, thinkTimeFactor: number, screenshotPath: string) {
+    constructor(logger: Logger, page: Page, id: string, thinkTimeFactor: number, screenshotPath: string) {
         super();
         this.logger = logger;
-        this.context = browserContext;
+        this.page = page;
         this.thinkTimeFactor = thinkTimeFactor;
         this.id = id;
         this.screenshotPath = screenshotPath;
@@ -28,9 +28,8 @@ export default abstract class VirtualUser extends EventEmitter {
 
     async start() {
         this.emit("started");
-        const page = await this.context.newPage();
         try {
-            await this.run(page);
+            await this.run(this.page);
         } catch (e) {
             this.emit("failed", e);
         } finally {

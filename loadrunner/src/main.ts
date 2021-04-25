@@ -1,12 +1,13 @@
 import SegfaultHandler from "segfault-handler";
 import "dd-trace/init";
 
-import { Browser, chromium, LaunchOptions } from "playwright-chromium";
+import { LaunchOptions } from "playwright-chromium";
 
 import { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
 import LoadRunner from "./runner";
 import fs from "fs/promises";
+import { BrowserProvider } from "./browser";
 
 (async () => {
     SegfaultHandler.registerHandler();
@@ -39,20 +40,11 @@ import fs from "fs/promises";
         handleSIGINT: false,
         handleSIGTERM: false
     };
-    // TODO: try running separate browsers and see whether this works more smoothly
-    const browsers = (await Promise.all(
-        accounts.map(classroom => createBrowsersForClass(classroom, browserConfig)))
-        ).flat();
 
-    async function createBrowsersForClass(classroom: Classroom, browserConfig: LaunchOptions): Promise<Browser[]> {
-        const browsers = [await chromium.launch(browserConfig)];
-        for (let i = 0; i < classroom.pupils.length; i++) {
-            browsers.push(await chromium.launch(browserConfig));
-        }
-        return browsers;
-    }
+    const pages = await new BrowserProvider(browserConfig)
+        .initializePages(accounts);
 
-    const lr = new LoadRunner(browsers, runID, url, accounts, screenshotPath);
+    const lr = new LoadRunner(pages, runID, url, accounts, screenshotPath);
     lr.on("stopped", async () => {
         rootLogger.info("Runner has stopped.");
         statsd.decrement(RUNNERS);

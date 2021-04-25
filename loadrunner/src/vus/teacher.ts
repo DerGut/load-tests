@@ -1,4 +1,4 @@
-import { BrowserContext, Page } from "playwright-chromium";
+import { Page } from "playwright-chromium";
 import { Config } from "./config";
 import VirtualUser from "./base";
 import { Logger } from "winston";
@@ -6,8 +6,8 @@ import { Logger } from "winston";
 export default class VirtualTeacher extends VirtualUser {
     account: Teacher;
     config: Config;
-    constructor(logger: Logger, context: BrowserContext, account: Teacher, config: Config, screenshotPath: string) {
-        super(logger, context, account.email, config.thinkTimeFactor, screenshotPath);
+    constructor(logger: Logger, page: Page, account: Teacher, config: Config, screenshotPath: string) {
+        super(logger, page, account.email, config.thinkTimeFactor, screenshotPath);
         if (config.classSize && (config.classSize < 2 || config.classSize > 40)) {
             throw new Error("Class size needs to be between 2 and 40 (inclusive)");
         }

@@ -1,4 +1,4 @@
-import { BrowserContext, Page } from "playwright-chromium";
+import { Page } from "playwright-chromium";
 
 import { Config } from "./config";
 import VirtualUser from "./base";
@@ -10,8 +10,8 @@ export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
     tags: {pupil: string, class: string};
-    constructor(logger: Logger, context: BrowserContext, account: Pupil, config: Config, screenshotPath: string) {
-        super(logger, context, account.username, config.thinkTimeFactor, screenshotPath);
+    constructor(logger: Logger, page: Page, account: Pupil, config: Config, screenshotPath: string) {
+        super(logger, page, account.username, config.thinkTimeFactor, screenshotPath);
         this.account = account;
         this.config = config;
         this.tags = {

@@ -1,4 +1,4 @@
-import { Browser, BrowserContext } from "playwright-chromium";
+import { Browser, BrowserContext, Page } from "playwright-chromium";
 
 import ClassLog from "./vus/classLog";
 import VirtualPupil from "./vus/pupil";
@@ -12,16 +12,16 @@ import { Config } from "./vus/config";
 
 export default class LoadRunner extends EventEmitter {
     logger = newLogger("runner");
-    browsers: Browser[];
+    pages: Map<string, Page>;
     runID: string;
     url: string;
     accounts: Classroom[];
     screenshotPath: string;
 
     vus: VirtualUser[] = [];
-    constructor(browsers: Browser[], runID: string, url: string, accounts: Classroom[], screenshotPath: string) {
+    constructor(pages: Map<string, Page>, runID: string, url: string, accounts: Classroom[], screenshotPath: string) {
         super();
-        this.browsers = browsers;
+        this.pages = pages;
         this.runID = runID;
         this.url = url;
         this.accounts = accounts;
@@ -30,6 +30,7 @@ export default class LoadRunner extends EventEmitter {
 
     async start() {
         this.logger.info("Starting up")
+
         for (let i = 0; i < this.accounts.length; i++) {
             const classroom = this.accounts[i];
             statsd.increment(CLASSES);
@@ -111,11 +112,14 @@ export default class LoadRunner extends EventEmitter {
 
     async startVirtualPupil(account: Pupil, config: Config): Promise<VirtualPupil> {
         const logger = newLogger(account.username);
-        const context = await this.getContext(logger);
+        const page = this.pages.get(account.username);
+        if (!page) {
+            throw new Error("No page provided for " + account.username);
+        }
 
-        const vu = new VirtualPupil(logger, context, account, config, this.screenshotPath);
+        const vu = new VirtualPupil(logger, page, account, config, this.screenshotPath);
 
-        this.handleVU(vu, context);
+        this.handleVU(vu, page);
         vu.start();
 
         return vu;
@@ -123,36 +127,20 @@ export default class LoadRunner extends EventEmitter {
 
     async startVirtualTeacher(account: Teacher, config: Config): Promise<VirtualTeacher> {
         const logger = newLogger(account.email);
-        const context = await this.getContext(logger);
+        const page = this.pages.get(account.email);
+        if (!page) {
+            throw new Error("No page provided for " + account.email);
+        }
 
-        const vu = new VirtualTeacher(logger, context, account, config, this.screenshotPath);
+        const vu = new VirtualTeacher(logger, page, account, config, this.screenshotPath);
 
-        this.handleVU(vu, context);
+        this.handleVU(vu, page);
         vu.start();
 
         return vu;
     }
 
-    async getContext(logger: Logger): Promise<BrowserContext> {
-        const browser = this.browsers.pop();
-        if (!browser) {
-            throw new Error("Not enough contexts provided");
-        }
-        return await browser.newContext({
-            logger: {
-                isEnabled: () => process.env.NODE_ENV === "production",
-                log: (name, _severity, message, args) => {
-                    if (message instanceof Error) {
-                        logger.error(message);
-                    } else {
-                        logger.debug(message, {name, args});
-                    }
-                }
-            },
-        });
-    }
-
-    async handleVU(vu: VirtualUser, context: BrowserContext) {
+    async handleVU(vu: VirtualUser, page: Page) {
         vu.on("started", () => statsd.increment(VUS));
         vu.on("failed", e => {
             this.logger.error("VU failed", e);
@@ -161,7 +149,13 @@ export default class LoadRunner extends EventEmitter {
             statsd.decrement(VUS);
             this.vus = this.vus.filter(v => v !== vu);
             try {
-                await context.browser()?.close();
+                const context = page.context();
+                const browser = context.browser();
+                if (browser) {
+                    await browser.close();
+                } else{
+                    await context.close();
+                }
             } catch(e) {
                 this.logger.warn("Context was already closed", e)
             }
