@@ -168,7 +168,9 @@ func (rc *RemoteClient) Stop() error {
 	// to shut down gracefully, we either need to wait for ~5min or periodically check for shutdown
 	// events while the VU is sleeping/ thinking
 	timeout := 5 * 60 // in seconds
-	err := rc.instance.RunCmd(context.TODO(), fmt.Sprintf("docker stop --time %d runner", timeout))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout+30)*time.Second)
+	defer cancel()
+	err := rc.instance.RunCmd(ctx, fmt.Sprintf("docker stop --time %d runner", timeout))
 	if err != nil {
 		log.Println("Graceful shutdown failed")
 	}
