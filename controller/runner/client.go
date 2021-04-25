@@ -22,8 +22,10 @@ const (
 	// ClassesPerRunner is the number of classes a single runner can manage simultaneously
 	ClassesPerRunner = 2
 
-	agentImage  = "datadog/agent:latest"
-	runnerImage = "jsteinmann/load-tests-runner:latest"
+	agentImage          = "datadog/agent:latest"
+	runnerImage         = "jsteinmann/load-tests-runner:latest"
+	screenshotPathImage = "/home/pwuser/runner/errors"
+	screenshotPathHost  = "/root/errors"
 )
 
 var runnerCounter int32 = 0
@@ -101,7 +103,8 @@ func (rc *RemoteClient) deploy(ctx context.Context, inst provisioner.Instance, s
 	case <-time.After(1 * time.Minute):
 	}
 
-	if err := inst.RunCmd(ctx, "mkdir -p /root/errors && chmod 777 /root/errors "); err != nil {
+	cmd = fmt.Sprintf("mkdir -p %s && chmod 777 %s", screenshotPathHost, screenshotPathHost)
+	if err := inst.RunCmd(ctx, cmd); err != nil {
 		log.Println("Failed creating error dir")
 	}
 
@@ -149,7 +152,7 @@ func runnerCmd(runID, url, accounts string) string {
 	--name runner \
 	--network load-tests \
 	--ipc=host \
-	--volume /root/errors:/home/pwuser/runner/errors \
+	--volume %s:%s \
 	--env NODE_OPTIONS=--max-old-space-size=4096 \
 	--env NODE_ENV=production \
 	--env DD_AGENT_HOST=dd-agent \
@@ -158,8 +161,9 @@ func runnerCmd(runID, url, accounts string) string {
 	--env DD_TAGS=runId:%s \
 	--env RUN_ID=%s \
 	--env URL=%s \
+	--env SCREENSHOT_PATH=%s \
 	--env 'ACCOUNTS=%s' \
-	%s`, runID, runID, url, accounts, runnerImage)
+	%s`, screenshotPathHost, screenshotPathImage, runID, runID, url, screenshotPathImage, accounts, runnerImage)
 }
 
 func (rc *RemoteClient) Stop() error {
