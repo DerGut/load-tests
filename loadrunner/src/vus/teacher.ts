@@ -157,13 +157,17 @@ export default class VirtualTeacher extends VirtualUser {
         await page.click(".customDropdown:has-text('Vorbereiten')");
         await page.click("h4:has-text('Material')");
 
-        const units = ["aiImpact", "privacyLeavingData"];
-        for (let i = 0; i < units.length; i++) {
-            await page.click(`#${units[i]}`);
-            await page.click("button:has-text('Zur Klasse hinzufügen')");
-            await this.think();
-            await this.think();
-        }
+        await page.click(".material__filterLabel:has-text('Künstliche Intelligenz')");
+        await page.click("#aiImpact");
+        await page.click("button:has-text('Zur Klasse hinzufügen')");
+
+        await this.think();
+        await page.click(".material__filterLabel:has-text('Datenschutz')");
+        await this.think();
+        await page.click("#privacyLeavingData");
+        await this.think();
+        await this.think();
+        await page.click("button:has-text('Zur Klasse hinzufügen')");
 
         await page.click("a:has-text('Home')");
     }
