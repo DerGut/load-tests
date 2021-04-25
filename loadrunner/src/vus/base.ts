@@ -97,7 +97,7 @@ export default abstract class VirtualUser extends EventEmitter {
         try {
             fs.writeFile(filename + ".html", html, (err) => {
                 if (err) {
-                this.logger.warn("Failed writing file:", err);
+                    this.logger.warn("Failed writing file:", err);
                 }
             });
         } catch (we) {
