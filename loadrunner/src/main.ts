@@ -41,26 +41,16 @@ import { Logger } from "winston";
     const pages = await new PageProvider(chromium, browserOptions, contextOptionsProvider)
         .provideFromContexts(accounts);
 
-    const lr = new LoadRunner(pages, runID, url, accounts, screenshotPath);
-    lr.on("stopped", async () => {
+    const runner = new LoadRunner(pages, runID, url, accounts, screenshotPath);
+    runner.on("stopped", async () => {
         rootLogger.info("Runner has stopped.");
         statsd.decrement(RUNNERS);
         statsd.decrement(CLASSES, accounts.length);
     });
-    process.once("SIGINT", async () => {
-        rootLogger.info("Received SIGINT, stopping runner.");
-        lr.on("stopped", async () => process.exit(130));
-        lr.stop();
-    });
-    process.once("SIGTERM", async () => {
-        rootLogger.info("Received SIGTERM, stopping runner.");
-        lr.on("stopped", async () => process.exit(143));
-        lr.stop();
-    });
-    process.once("exit", () => rootLogger.info("Exiting"));
+    handleSignals(runner);
 
     statsd.increment(RUNNERS);
-    await lr.start();
+    await runner.start();
     rootLogger.info(`Started all ${accounts.length * (accounts[0].pupils.length + 1)} users`);
 })();
 
@@ -125,4 +115,18 @@ function newPlaywrightLogger(logger: Logger): PWLogger {
             }
         }
     };
+}
+
+function handleSignals(runner: LoadRunner) {
+    process.once("SIGINT", async () => {
+        rootLogger.info("Received SIGINT, stopping runner.");
+        runner.on("stopped", async () => process.exit(130));
+        runner.stop();
+    });
+    process.once("SIGTERM", async () => {
+        rootLogger.info("Received SIGTERM, stopping runner.");
+        runner.on("stopped", async () => process.exit(143));
+        runner.stop();
+    });
+    process.once("exit", () => rootLogger.info("Exiting"));
 }
