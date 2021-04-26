@@ -1,13 +1,14 @@
 import SegfaultHandler from "segfault-handler";
 import "dd-trace/init";
 
-import { LaunchOptions } from "playwright-chromium";
+import { BrowserContextOptions, chromium, LaunchOptions, Logger as PWLogger } from "playwright-chromium";
 
-import { root as rootLogger } from "./logger";
+import newLogger, { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
 import LoadRunner from "./runner";
 import fs from "fs/promises";
-import { BrowserProvider } from "./browser";
+import { PageProvider } from "./PageProvider";
+import { Logger } from "winston";
 
 (async () => {
     SegfaultHandler.registerHandler();
@@ -20,29 +21,25 @@ import { BrowserProvider } from "./browser";
         rootLogger.info("Not taking screenshot");
     }
 
-    const browserConfig: LaunchOptions = { 
+    const browserOptions: LaunchOptions = { 
         headless,
         slowMo: 200,
         args: [
             "--disable-dev-shm-usage",
             "--full-memory-crash-report"
         ],
-        logger: {
-            isEnabled: () => process.env.NODE_ENV === "production",
-            log: (name, _severity, message, args) => {
-                if (message instanceof Error) {
-                    rootLogger.error(message);
-                } else {
-                    rootLogger.debug(message, {name, args});
-                }
-            }
-        },
+        logger: newPlaywrightLogger(rootLogger),
         handleSIGINT: false,
         handleSIGTERM: false
     };
+    
+    const contextOptionsProvider = (account: Account): BrowserContextOptions => {
+        const logger = newLogger(account.id());
+        return { logger: newPlaywrightLogger(logger) };
+    };
 
-    const pages = await new BrowserProvider(browserConfig)
-        .initializePages(accounts);
+    const pages = await new PageProvider(chromium, browserOptions, contextOptionsProvider)
+        .provideFromContexts(accounts);
 
     const lr = new LoadRunner(pages, runID, url, accounts, screenshotPath);
     lr.on("stopped", async () => {
@@ -115,4 +112,17 @@ async function parseArgs(args: string[]): Promise<ConfigType> {
         }
         throw e;
     }
+}
+
+function newPlaywrightLogger(logger: Logger): PWLogger {
+    return {
+        isEnabled: () => process.env.NODE_ENV === "production",
+        log: (name, _severity, message, args) => {
+            if (message instanceof Error) {
+                logger.error(message);
+            } else {
+                logger.debug(message, {name, args});
+            }
+        }
+    };
 }
