@@ -207,38 +207,6 @@ export default class VirtualPupil extends VirtualUser {
         });
     }
 
-    async workExercise(page: Page) {
-        await this.think();
-
-        const rand = Math.random();
-        console.log("random number: ", rand);
-        if (rand < 0.1) {
-        } else if (rand < 0.2) {
-            await askQuestion(page);
-        } else if (rand < 0.3) {
-            await getHint(page);
-        }
-
-        async function getHint(page: Page) {
-            console.log("getting hint")
-            const button = await page.waitForSelector("button:has-text('Tipp')");
-            if (await button.isEnabled()) {
-                await button.click();
-            } else {
-                console.log("is not enabled...");
-            }
-        }
-
-        async function askQuestion(page: Page) {
-            console.log("asking question");
-
-            await page.click(":is(button:has-text('Fragen'), button:has-text('Hilfechat'))");
-            await page.fill("textarea", "qwertyuiopasdfghjkl");
-            await page.click("text='Frage stellen!'");
-            await page.click("text=minimieren"); // TODO: notwendig?
-        }
-    }
-
     async sendChatMessage(page: Page) {
         await page.click("a:has-text('Nachrichten')");
         await this.think();
