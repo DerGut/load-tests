@@ -13,9 +13,9 @@ export interface Account {
 export class Teacher implements Account {
     email: string;
     password: string;
-    constructor(email: string, password: string) {
-        this.email = email;
-        this.password = password;
+    constructor(json: {email: string, password: string}) {
+        this.email = json.email;
+        this.password = json.password;
     }
 
     id() {
@@ -27,10 +27,10 @@ export class Pupil implements Account {
     username: string;
     password: string;
     company: string;
-    constructor(username: string, password: string, company: string) {
-        this.username = username;
-        this.password = password;
-        this.company = company;
+    constructor(json: {username: string, password: string, company: string}) {
+        this.username = json.username;
+        this.password = json.password;
+        this.company = json.company;
     }
 
     id() {

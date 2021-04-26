@@ -76,8 +76,23 @@ async function parseArgs(args: string[]): Promise<ConfigType> {
         accounts = buf.toString();
     }
 
+    const accountsParsed = parseAccounts(accounts);
+
+    return { runID, url, accounts: accountsParsed, screenshotPath, headless };
+}
+
+function parseAccounts(json: string): Classroom[] {
+    let accounts: Classroom[] = [];
     try {
-        return { runID, url, accounts: JSON.parse(accounts), screenshotPath, headless };
+        const parsed = JSON.parse(json);
+        for (let i = 0; i < parsed.length; i++) {
+            const classroom = parsed[i];
+            
+            const teacher = new Teacher(classroom.teacher);
+            const pupils = pupilsFromJson(classroom.pupils);
+
+            accounts.push(Object.assign(classroom, { teacher, pupils }));
+        }
     } catch (e) {
         if (e instanceof SyntaxError) {
             rootLogger.error("Error parsing accounts", e);
@@ -85,6 +100,16 @@ async function parseArgs(args: string[]): Promise<ConfigType> {
         }
         throw e;
     }
+
+    return accounts;
+}
+
+function pupilsFromJson(json: []): Pupil[] {
+    const pupils = [];
+    for (let i = 0; i < json.length; i++) {
+        pupils.push(new Pupil(json[i]));
+    }
+    return pupils;
 }
 
 const browserOptions: LaunchOptions = { 
