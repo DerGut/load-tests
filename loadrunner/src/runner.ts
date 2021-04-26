@@ -8,7 +8,7 @@ import newLogger from "./logger";
 import statsd, { CLASSES, VUS } from "./statsd";
 import EventEmitter from "events";
 import { Config } from "./vus/config";
-import { Classroom, Pupil, Teacher } from "./vus/accounts";
+import { Account, Classroom, Pupil, Teacher } from "./vus/accounts";
 
 export type PageMap = Map<string, Page>;
 export default class LoadRunner extends EventEmitter {
@@ -64,14 +64,14 @@ export default class LoadRunner extends EventEmitter {
     async startPreparedClassroom(classroom: Classroom): Promise<VirtualUser[]> {
         const vus: VirtualUser[] = [];
 
-        const vu = await this.startVirtualTeacher(classroom.teacher, {
+        const vu = await this.startVirtualUser(classroom.teacher, {
             pageUrl: this.url,
             thinkTimeFactor: this.drawThinkTimeFactor()
         });
         vus.push(vu);
 
         for (let i = 0; i < classroom.pupils.length; i++) {
-            const vu = await this.startVirtualPupil(classroom.pupils[i], {
+            const vu = await this.startVirtualUser(classroom.pupils[i], {
                 pageUrl: this.url,
                 thinkTimeFactor: this.drawThinkTimeFactor()
             });
@@ -88,7 +88,7 @@ export default class LoadRunner extends EventEmitter {
 
         const classLog = new ClassLog(classroom.pupils.length);
 
-        const vu = await this.startVirtualTeacher(classroom.teacher, {
+        const vu = await this.startVirtualUser(classroom.teacher, {
             pageUrl: this.url,
             classLog: classLog,
             className: classroom.name,
@@ -99,7 +99,7 @@ export default class LoadRunner extends EventEmitter {
 
         for (let i = 0; i < classroom.pupils.length; i++) {
             classLog.onClassCreated(async classCode => {
-                const vu = await this.startVirtualPupil(classroom.pupils[i], {
+                const vu = await this.startVirtualUser(classroom.pupils[i], {
                     pageUrl: this.url,
                     classCode,
                     thinkTimeFactor: this.drawThinkTimeFactor()
@@ -111,29 +111,21 @@ export default class LoadRunner extends EventEmitter {
         return vus;
     }
 
-    async startVirtualPupil(account: Pupil, config: Config): Promise<VirtualPupil> {
-        const logger = newLogger(account.username);
-        const page = this.pages.get(account.username);
+    async startVirtualUser(account: Account, config: Config): Promise<VirtualUser> {
+        const logger = newLogger(account.id());
+        const page = this.pages.get(account.id());
         if (!page) {
-            throw new Error("No page provided for " + account.username);
+            throw new Error("No page provided for " + account.id());
         }
-
-        const vu = new VirtualPupil(logger, page, account, config, this.screenshotPath);
-
-        this.handleVU(vu, page);
-        vu.start();
-
-        return vu;
-    }
-
-    async startVirtualTeacher(account: Teacher, config: Config): Promise<VirtualTeacher> {
-        const logger = newLogger(account.email);
-        const page = this.pages.get(account.email);
-        if (!page) {
-            throw new Error("No page provided for " + account.email);
+        
+        let vu: VirtualUser;
+        if (account instanceof Teacher) {
+            vu = new VirtualTeacher(logger, page, account, config, this.screenshotPath);
+        } else if (account instanceof Pupil) {
+            vu = new VirtualPupil(logger, page, account, config, this.screenshotPath);
+        } else {
+            throw new Error("Unknown account type");
         }
-
-        const vu = new VirtualTeacher(logger, page, account, config, this.screenshotPath);
 
         this.handleVU(vu, page);
         vu.start();
