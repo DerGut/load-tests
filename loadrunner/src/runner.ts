@@ -28,7 +28,7 @@ export default class LoadRunner extends EventEmitter {
     }
 
     async start() {
-        this.logger.info("Starting up")
+        this.logger.info("Starting up");
 
         for (let i = 0; i < this.accounts.length; i++) {
             const classroom = this.accounts[i];
