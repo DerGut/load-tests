@@ -23,6 +23,7 @@ import { Account, Classroom, Pupil, Teacher } from "./vus/accounts";
     }
 
     const pages = await startPages(headless, accounts);
+    rootLogger.info(`Started all ${pages.size} pages`);
 
     const runner = new LoadRunner(pages, runID, url, accounts, screenshotPath);
     runner.on("stopped", async () => {
