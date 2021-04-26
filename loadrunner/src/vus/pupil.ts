@@ -10,7 +10,7 @@ export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
     constructor(logger: Logger, page: Page, account: Pupil, config: Config, screenshotPath: string) {
-        super(logger, page, account.username, config.thinkTimeFactor, screenshotPath, {
+        super(logger, page, account.id(), config.thinkTimeFactor, screenshotPath, {
             pupil: account.username,
             class: account.username.replace("pupil", "").replace(/t\d/, "")
         });
