@@ -216,7 +216,3 @@ export default class VirtualPupil extends VirtualUser {
         await page.click("a:has-text('Nachrichten')");
     }
 }
-
-export async function think(time: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, time * 1000));
-}

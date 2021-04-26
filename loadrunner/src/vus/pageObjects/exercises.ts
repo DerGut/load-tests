@@ -1,6 +1,5 @@
 import { Page } from "playwright-chromium";
 import { Logger } from "winston";
-import { think } from "../pupil";
 
 export abstract class Exercise {
     logger: Logger;
@@ -27,7 +26,9 @@ export abstract class Exercise {
         const rand = Math.random() + 0.5;
         const thinkTimeSec = thinkTimeFactor * rand * this.avgWorkDurationMin * 60;
         this.logger.info(`thinking ${thinkTimeSec}sec`);
-        await think(thinkTimeSec);
+        return new Promise(resolve => {
+            setTimeout(resolve, thinkTimeSec * 1000);
+        });
     }
 
     async work(thinkTimeFactor: number) {
@@ -35,7 +36,7 @@ export abstract class Exercise {
     }
 
     async maybeDismissWrongAnswerModal() {
-        await think(2);
+        await this.page.waitForTimeout(2000);
         try {
             await this.page.click("button:has-text('OK')", { timeout: 1 });
         } catch {}
