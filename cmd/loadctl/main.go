@@ -30,11 +30,13 @@ func main() {
 
 	p := provisioner.NewDO(conf.DoApiKey, conf.DoRegion, conf.DoSize, conf.Debug)
 
+	runID := generateID()
+
 	var c controller.Controller
 	if conf.Local {
 		c = controller.NewLocal()
 	} else {
-		c = controller.NewRemote(runID(), p, conf.DdApiKey)
+		c = controller.NewRemote(generateID(), conf.ClassesPerRunner, p, conf.DdApiKey)
 	}
 
 	// TODO: test duration should not start before first runner has been deployed
