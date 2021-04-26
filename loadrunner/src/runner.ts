@@ -1,4 +1,4 @@
-import { Browser, BrowserContext, Page } from "playwright-chromium";
+import { Page } from "playwright-chromium";
 
 import ClassLog from "./vus/classLog";
 import VirtualPupil from "./vus/pupil";
