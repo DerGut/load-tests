@@ -1,5 +1,6 @@
 import EventEmitter from "events";
 import fs from "fs";
+import { Tags } from "hot-shots";
 import { errors, Page } from "playwright-chromium";
 import { Logger } from "winston";
 import statsd, { ERRORS, OPERATIONS } from "../statsd";
@@ -11,13 +12,15 @@ export default abstract class VirtualUser extends EventEmitter {
     active: boolean = true;
     id: string;
     screenshotPath: string;
-    constructor(logger: Logger, page: Page, id: string, thinkTimeFactor: number, screenshotPath: string) {
+    tags: Tags;
+    constructor(logger: Logger, page: Page, id: string, thinkTimeFactor: number, screenshotPath: string, tags: Tags) {
         super();
         this.logger = logger;
         this.page = page;
         this.thinkTimeFactor = thinkTimeFactor;
         this.id = id;
         this.screenshotPath = screenshotPath;
+        this.tags = tags;
     }
 
     abstract run(page: Page): Promise<void>;
@@ -51,15 +54,16 @@ export default abstract class VirtualUser extends EventEmitter {
 
     async time<T>(label: string, sync: boolean = false, fn: () => Promise<T>): Promise<T> {
         if (sync) {
-            statsd.increment(OPERATIONS);
+            statsd.increment(OPERATIONS, this.tags);
         }
 
-        const intrumented = statsd.asyncDistTimer(fn, label);
+        const metric = sync ? "sync_ops" : "async_ops";
+        const intrumented = statsd.asyncDistTimer(fn, metric, Object.assign({name: label}, this.tags));
         try {
             return await intrumented();
         } catch (e) {
             if (sync) {
-                statsd.increment(ERRORS);
+                statsd.increment(ERRORS, this.tags);
             }
             throw e;
         }

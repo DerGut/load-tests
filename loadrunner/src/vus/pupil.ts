@@ -9,15 +9,13 @@ import { Logger } from "winston";
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;
     config: Config;
-    tags: {pupil: string, class: string};
     constructor(logger: Logger, page: Page, account: Pupil, config: Config, screenshotPath: string) {
-        super(logger, page, account.username, config.thinkTimeFactor, screenshotPath);
+        super(logger, page, account.username, config.thinkTimeFactor, screenshotPath, {
+            pupil: account.username,
+            class: account.username.replace("pupil", "").replace(/t\d/, "")
+        });
         this.account = account;
         this.config = config;
-        this.tags = {
-            pupil: account.username,
-            class: this.account.username.replace("pupil", "").replace(/t\d/, "")
-        };
     }
 
     async run(page: Page) {

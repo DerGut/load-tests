@@ -7,7 +7,7 @@ export default class VirtualTeacher extends VirtualUser {
     account: Teacher;
     config: Config;
     constructor(logger: Logger, page: Page, account: Teacher, config: Config, screenshotPath: string) {
-        super(logger, page, account.email, config.thinkTimeFactor, screenshotPath);
+        super(logger, page, account.email, config.thinkTimeFactor, screenshotPath, {email: account.email});
         if (config.classSize && (config.classSize < 2 || config.classSize > 40)) {
             throw new Error("Class size needs to be between 2 and 40 (inclusive)");
         }
