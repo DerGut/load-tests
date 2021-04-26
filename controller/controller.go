@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"sync"
 	"time"
 
@@ -25,9 +26,10 @@ type RunConfig struct {
 type RunnerFunc func() runner.Client
 type controller struct {
 	RunnerFunc
-	runID         string
-	activeRunners []runner.Client
-	provisioner   provisioner.Provisioner
+	runID            string
+	classesPerRunner int
+	activeRunners    []runner.Client
+	provisioner      provisioner.Provisioner
 }
 
 func NewLocal() Controller {
@@ -35,13 +37,17 @@ func NewLocal() Controller {
 		RunnerFunc: func() runner.Client {
 			return runner.NewLocal()
 		},
+		// Locally we only have one runner an it needs to support
+		// any number of classes for testing purposes
+		classesPerRunner: math.MaxInt32,
 	}
 }
 
-func NewRemote(runID string, p provisioner.Provisioner, ddApiKey string) Controller {
+func NewRemote(runID string, classesPerRunner int, p provisioner.Provisioner, ddApiKey string) Controller {
 	return &controller{
-		runID:       runID,
-		provisioner: p,
+		runID:            runID,
+		classesPerRunner: classesPerRunner,
+		provisioner:      p,
 		RunnerFunc: func() runner.Client {
 			return runner.NewRemote(runID, ddApiKey)
 		},
@@ -78,7 +84,7 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 }
 
 func (c *controller) nextStep(ctx context.Context, runID string, url string, accs []accounts.Classroom) error {
-	accsByRunner := batchAccounts(accs)
+	accsByRunner := batchAccounts(accs, c.classesPerRunner)
 
 	log.Println("Starting", len(accsByRunner), "runner(s) with", len(accs), "classes in total")
 	runners, err := c.startRunners(ctx, runID, url, accsByRunner)
@@ -90,14 +96,14 @@ func (c *controller) nextStep(ctx context.Context, runID string, url string, acc
 	return nil
 }
 
-func batchAccounts(accs []accounts.Classroom) [][]accounts.Classroom {
+func batchAccounts(accs []accounts.Classroom, classesPerRunner int) [][]accounts.Classroom {
 	var batches [][]accounts.Classroom
-	for i := 0; i < len(accs); i += runner.ClassesPerRunner {
-		if i+runner.ClassesPerRunner > len(accs) {
+	for i := 0; i < len(accs); i += classesPerRunner {
+		if i+classesPerRunner > len(accs) {
 			remaining := len(accs) - i
 			batches = append(batches, accs[i:remaining])
 		} else {
-			batches = append(batches, accs[i:i+runner.ClassesPerRunner])
+			batches = append(batches, accs[i:i+classesPerRunner])
 		}
 	}
 

@@ -19,9 +19,6 @@ import (
 )
 
 const (
-	// ClassesPerRunner is the number of classes a single runner can manage simultaneously
-	ClassesPerRunner = 2
-
 	agentImage          = "datadog/agent:latest"
 	runnerImage         = "jsteinmann/load-tests-runner:latest"
 	screenshotPathImage = "/home/pwuser/runner/errors"

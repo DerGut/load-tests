@@ -36,7 +36,7 @@ func main() {
 	if conf.Local {
 		c = controller.NewLocal()
 	} else {
-		c = controller.NewRemote(generateID(), conf.ClassesPerRunner, p, conf.DdApiKey)
+		c = controller.NewRemote(runID, conf.ClassesPerRunner, p, conf.DdApiKey)
 	}
 
 	// TODO: test duration should not start before first runner has been deployed
@@ -100,8 +100,8 @@ const (
 	runIDLen = 6
 )
 
-// runID generates a random 6 character long alpha-numeric string ID
-func runID() string {
+// generateID generates a random 6 character long alpha-numeric string ID
+func generateID() string {
 	b := make([]byte, runIDLen)
 	for i := range b {
 		b[i] = chars[rand.Intn(len(chars))]
