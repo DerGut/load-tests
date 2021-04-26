@@ -7,7 +7,6 @@ import VirtualUser from "./vus/base";
 import newLogger from "./logger";
 import statsd, { CLASSES, VUS } from "./statsd";
 import EventEmitter from "events";
-import { Logger } from "winston";
 import { Config } from "./vus/config";
 
 export default class LoadRunner extends EventEmitter {
