@@ -1,5 +1,6 @@
 import { Browser, BrowserContextOptions, BrowserType, chromium, LaunchOptions, Page } from "playwright-chromium";
 import { PageMap } from "./runner";
+import { Account, Classroom } from "./vus/accounts";
 
 type PageOptionsProvider = (account: Account) => BrowserContextOptions;
 

@@ -9,6 +9,7 @@ import LoadRunner, { PageMap } from "./runner";
 import fs from "fs/promises";
 import { PageProvider } from "./PageProvider";
 import { Logger } from "winston";
+import { Account, Classroom, Pupil, Teacher } from "./vus/accounts";
 
 (async () => {
     SegfaultHandler.registerHandler();

@@ -5,6 +5,7 @@ import VirtualUser from "./base";
 import statsd, { EXERCISES_SUBMITTED, TASKSERIES_SUBMITTED } from "../statsd";
 import { TaskSeries } from "./pageObjects/TaskSeries";
 import { Logger } from "winston";
+import { Pupil } from "./accounts";
 
 export default class VirtualPupil extends VirtualUser {
     account: Pupil;

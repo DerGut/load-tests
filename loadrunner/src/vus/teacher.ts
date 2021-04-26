@@ -2,6 +2,7 @@ import { Page } from "playwright-chromium";
 import { Config } from "./config";
 import VirtualUser from "./base";
 import { Logger } from "winston";
+import { Teacher } from "./accounts";
 
 export default class VirtualTeacher extends VirtualUser {
     account: Teacher;

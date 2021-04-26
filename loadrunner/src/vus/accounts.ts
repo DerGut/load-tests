@@ -1,16 +1,16 @@
 
-interface Classroom {
+export interface Classroom {
     prepared: boolean;
     name: string;
     teacher: Teacher;
     pupils: Pupil[];
 }
 
-interface Account {
+export interface Account {
     id(): string;
 }
 
-class Teacher implements Account {
+export class Teacher implements Account {
     email: string;
     password: string;
     constructor(email: string, password: string) {
@@ -23,7 +23,7 @@ class Teacher implements Account {
     }
 }
 
-class Pupil implements Account {
+export class Pupil implements Account {
     username: string;
     password: string;
     company: string;

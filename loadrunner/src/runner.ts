@@ -8,6 +8,7 @@ import newLogger from "./logger";
 import statsd, { CLASSES, VUS } from "./statsd";
 import EventEmitter from "events";
 import { Config } from "./vus/config";
+import { Classroom, Pupil, Teacher } from "./vus/accounts";
 
 export type PageMap = Map<string, Page>;
 export default class LoadRunner extends EventEmitter {
