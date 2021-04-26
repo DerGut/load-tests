@@ -9,16 +9,17 @@ import statsd, { CLASSES, VUS } from "./statsd";
 import EventEmitter from "events";
 import { Config } from "./vus/config";
 
+export type PageMap = Map<string, Page>;
 export default class LoadRunner extends EventEmitter {
     logger = newLogger("runner");
-    pages: Map<string, Page>;
+    pages: PageMap;
     runID: string;
     url: string;
     accounts: Classroom[];
     screenshotPath: string;
 
     vus: VirtualUser[] = [];
-    constructor(pages: Map<string, Page>, runID: string, url: string, accounts: Classroom[], screenshotPath: string) {
+    constructor(pages: PageMap, runID: string, url: string, accounts: Classroom[], screenshotPath: string) {
         super();
         this.pages = pages;
         this.runID = runID;

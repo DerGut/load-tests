@@ -5,7 +5,7 @@ import { BrowserContextOptions, chromium, LaunchOptions, Logger as PWLogger } fr
 
 import newLogger, { root as rootLogger } from "./logger";
 import statsd, { CLASSES, RUNNERS } from "./statsd";
-import LoadRunner from "./runner";
+import LoadRunner, { PageMap } from "./runner";
 import fs from "fs/promises";
 import { PageProvider } from "./PageProvider";
 import { Logger } from "winston";
@@ -21,25 +21,7 @@ import { Logger } from "winston";
         rootLogger.info("Not taking screenshot");
     }
 
-    const browserOptions: LaunchOptions = { 
-        headless,
-        slowMo: 200,
-        args: [
-            "--disable-dev-shm-usage",
-            "--full-memory-crash-report"
-        ],
-        logger: newPlaywrightLogger(rootLogger),
-        handleSIGINT: false,
-        handleSIGTERM: false
-    };
-    
-    const contextOptionsProvider = (account: Account): BrowserContextOptions => {
-        const logger = newLogger(account.id());
-        return { logger: newPlaywrightLogger(logger) };
-    };
-
-    const pages = await new PageProvider(chromium, browserOptions, contextOptionsProvider)
-        .provideFromContexts(accounts);
+    const pages = await startPages(headless, accounts);
 
     const runner = new LoadRunner(pages, runID, url, accounts, screenshotPath);
     runner.on("stopped", async () => {
@@ -102,6 +84,29 @@ async function parseArgs(args: string[]): Promise<ConfigType> {
         }
         throw e;
     }
+}
+
+const browserOptions: LaunchOptions = { 
+    slowMo: 200,
+    args: [
+        "--disable-dev-shm-usage",
+        "--full-memory-crash-report"
+    ],
+    logger: newPlaywrightLogger(rootLogger),
+    handleSIGINT: false,
+    handleSIGTERM: false
+};
+
+async function startPages(headless: boolean, accounts: Classroom[]): Promise<PageMap> {
+    Object.assign(browserOptions, { headless });
+    
+    const contextOptionsProvider = (account: Account): BrowserContextOptions => {
+        const logger = newLogger(account.id());
+        return { logger: newPlaywrightLogger(logger) };
+    };
+
+    const provider = new PageProvider(chromium, browserOptions, contextOptionsProvider);
+    return provider.provideFromContexts(accounts);
 }
 
 function newPlaywrightLogger(logger: Logger): PWLogger {

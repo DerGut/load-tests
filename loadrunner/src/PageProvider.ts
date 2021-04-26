@@ -1,4 +1,5 @@
 import { Browser, BrowserContextOptions, BrowserType, chromium, LaunchOptions, Page } from "playwright-chromium";
+import { PageMap } from "./runner";
 
 type PageOptionsProvider = (account: Account) => BrowserContextOptions;
 
@@ -12,7 +13,7 @@ export class PageProvider {
         this.contextOptionsProvider = pageOptionsProvider;
     }
     
-    async provideFromBrowsers(accounts: Classroom[]): Promise<Map<string, Page>> {
+    async provideFromBrowsers(accounts: Classroom[]): Promise<PageMap> {
         const pages = new Map();
         for (let i = 0; i < accounts.length; i++) {
             const classroom = accounts[i];
@@ -33,7 +34,7 @@ export class PageProvider {
         return pages;
     }
 
-    async provideFromContexts(accounts: Classroom[]): Promise<Map<string, Page>> {
+    async provideFromContexts(accounts: Classroom[]): Promise<PageMap> {
         const pages = new Map();
 
         const browser = await this.type.launch(this.browserOptions);
