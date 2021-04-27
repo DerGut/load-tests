@@ -87,7 +87,7 @@ export default abstract class VirtualUser extends EventEmitter {
 
                 if (e instanceof errors.TimeoutError) {
                     this.logger.warn("Refreshing and trying again", e);
-                    await page.reload();
+                    this.reload(page);
                 } else {
                     throw e;
                 }
@@ -95,6 +95,16 @@ export default abstract class VirtualUser extends EventEmitter {
         }
         
         return Promise.reject();
+    }
+
+    async reload(page: Page) {
+        while (this.sessionActive()) {
+            try {
+                return await page.reload();
+            } catch(re) {
+                this.logger.warn("Failed to reload, trying again", re);
+            }
+        }
     }
 
     async recordPage(page: Page) {
