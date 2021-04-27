@@ -120,15 +120,15 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 
 	ch := make(chan runnerResult, len(accsByRunner))
 	for _, accs := range accsByRunner {
-		go func(a []accounts.Classroom) {
-			r := c.RunnerFunc()
-			s := runner.Step{Url: url, Accounts: a}
-			if err := r.Start(ctx, &s, c.provisioner); err != nil {
+		r := c.RunnerFunc()
+		s := runner.Step{Url: url, Accounts: accs}
+		go func(step *runner.Step) {
+			if err := r.Start(ctx, step, c.provisioner); err != nil {
 				ch <- runnerResult{nil, err}
 			} else {
 				ch <- runnerResult{r, nil}
 			}
-		}(accs)
+		}(&s)
 	}
 
 	var runners []runner.Client
