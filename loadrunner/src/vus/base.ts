@@ -89,7 +89,9 @@ export default abstract class VirtualUser extends EventEmitter {
                     this.logger.warn("Refreshing and trying again", e);
                     this.reload(page);
                 } else {
-                    throw e;
+                    const context = page.context();
+                    this.page = await context.newPage();
+                    await this.run(this.page);
                 }
             }
         }
