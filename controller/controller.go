@@ -58,6 +58,11 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 	accountIdx := 0
 	defer c.cleanup()
 
+	errCh := make(chan error)
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
+
+	accountIdx := 0
 	currentLoad := 0
 	for _, load := range cfg.LoadCurve.LoadLevels {
 		log.Println("Next step with", load, "running classes")
@@ -65,10 +70,17 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 		if toAdd < 0 {
 			panic("No Load decrease implemented yet")
 		}
+
 		if toAdd > 0 {
-			if err := c.nextStep(ctx, c.runID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+toAdd]); err != nil {
-				return err
-			}
+			wg.Add(1)
+			batch := cfg.Accounts[accountIdx : accountIdx+toAdd]
+			go func(b []accounts.Classroom) {
+				err := c.nextStep(ctx, c.runID, cfg.Url, b)
+				if err != nil {
+					errCh <- err
+				}
+				wg.Done()
+			}(batch)
 			accountIdx += toAdd
 		}
 		currentLoad = load
@@ -77,6 +89,8 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 		case <-time.After(cfg.LoadCurve.StepSize.Duration):
 		case <-ctx.Done():
 			return ctx.Err()
+		case err := <-errCh:
+			return err
 		}
 	}
 	log.Println("Test is over")
