@@ -46,9 +46,12 @@ export default abstract class VirtualUser extends EventEmitter {
     }
 
     // Pauses for some time between 2.5s and 22.5s
-    async think() {
+    async think(timeSec?: number): Promise<void> {
+        if (!timeSec) {
+            timeSec = 10;
+        }
         const rand = Math.random() + 0.5; // 0.5 to 1.5
-        const thinkTime = rand * this.thinkTimeFactor * 10 * 1000;
+        const thinkTime = rand * this.thinkTimeFactor * timeSec * 1000;
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 

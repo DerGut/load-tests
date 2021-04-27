@@ -35,7 +35,7 @@ export class TaskSeries {
         await this.page.waitForSelector("text='Aufträge'");
     }
 
-    async nextExercise(): Promise<Exercise> {
+    async nextExercise(thinkFunc: (time?: number) => Promise<void>): Promise<Exercise> {
         const exerciseSelector = ".subSection:nth-last-child(1) .exercise";
 
         const id = await this.page.getAttribute(exerciseSelector, "id");
@@ -49,13 +49,13 @@ export class TaskSeries {
 
         switch (type) {
             case "freeText":
-                return new FreeText(this.logger, this.page, this.pupilId);
+                return new FreeText(this.logger, this.page, this.pupilId, thinkFunc);
             case "survey":
-                return new Survey(this.logger, this.page, this.pupilId);
+                return new Survey(this.logger, this.page, this.pupilId, thinkFunc);
             case "multipleChoice":
-                return new MultipleChoice(this.logger, this.page, this.pupilId);
+                return new MultipleChoice(this.logger, this.page, this.pupilId, thinkFunc);
             case "input__Field":
-                return new InputField(this.logger, this.page, this.pupilId);
+                return new InputField(this.logger, this.page, this.pupilId, thinkFunc);
             default:
                 throw new Error(`Exercise type "${type}" not implemented`);
         }
