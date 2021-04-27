@@ -59,8 +59,7 @@ func (dop *doProvisioner) Provision(ctx context.Context, instanceID string) (Ins
 		return nil, err
 	}
 
-	if err = waitForReachable(ctx, d); err != nil {
-		log.Println("Destroying unreachable droplet:", d.Name)
+	if err = waitForReachable(ctx, d, dop.debug); err != nil {
 		if _, errDel := client.Droplets.Delete(context.TODO(), d.ID); errDel != nil {
 			log.Printf("Couldn't destroy droplet %s, please do so manually\n", d.Name)
 		}
@@ -143,13 +142,15 @@ const (
 )
 
 // waitForReachable checks the instance for SSH readiness with exponential backoff.
-func waitForReachable(ctx context.Context, d *godo.Droplet) error {
+func waitForReachable(ctx context.Context, d *godo.Droplet, debug bool) error {
 	for i := 0.0; i < maxTries; i++ {
 		if isReachable(d) {
 			return nil
 		}
 		backoff := time.Duration(math.Pow(2.0, i)) * backoffModifier
-		log.Println(d.Name, "not yet reachable, trying again in", backoff)
+		if debug {
+			log.Println(d.Name, "not yet reachable, trying again in", backoff)
+		}
 		select {
 		case <-time.After(backoff): // 10s to 160s
 		case <-ctx.Done():
