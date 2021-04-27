@@ -133,7 +133,7 @@ async function startPages(headless: boolean, accounts: Classroom[]): Promise<Pag
     };
 
     const provider = new PageProvider(chromium, browserOptions, contextOptionsProvider);
-    return provider.provideFromContexts(accounts);
+    return provider.provideFromBrowsers(accounts);
 }
 
 function newPlaywrightLogger(logger: Logger): PWLogger {
