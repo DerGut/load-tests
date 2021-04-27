@@ -1,19 +1,20 @@
 import { Page } from "playwright-chromium";
 import { Logger } from "winston";
-import { think } from "../pupil";
 
 export abstract class Exercise {
     logger: Logger;
     page: Page;
     pupilId: string;
+    thinkVU: (time: number) => Promise<void>;
 
     // This number includes the time spent for reading a text, watching a video etc. before
     // starting the actual exercise. So these should be big. -1 because this class is abstract.
     avgWorkDurationMin: number = -1;
-    constructor(logger: Logger, page: Page, pupilId: string) {
+    constructor(logger: Logger, page: Page, pupilId: string, thinkVU: (time: number) => Promise<void>) {
         this.logger = logger;
         this.page = page;
         this.pupilId = pupilId;
+        this.thinkVU = thinkVU;
     }
 
     abstract submit(): Promise<boolean>;
@@ -23,19 +24,17 @@ export abstract class Exercise {
     }
 
     // Waits between (avgWorkDurationSec/4) and (6*avgWorkDurationSec/4)
-    async think(thinkTimeFactor: number) {
-        const rand = Math.random() + 0.5;
-        const thinkTimeSec = thinkTimeFactor * rand * this.avgWorkDurationMin * 60;
-        this.logger.info(`thinking ${thinkTimeSec}sec`);
-        await think(thinkTimeSec);
+    async think() {
+        this.logger.info(`thinking ~${this.avgWorkDurationMin * 60}sec`);
+        await this.thinkVU(this.avgWorkDurationMin * 60);
     }
 
-    async work(thinkTimeFactor: number) {
-        await this.think(thinkTimeFactor);
+    async work() {
+        await this.think();
     }
 
     async maybeDismissWrongAnswerModal() {
-        await think(2);
+        await this.page.waitForTimeout(2000);
         try {
             await this.page.click("button:has-text('OK')", { timeout: 1 });
         } catch {}
@@ -80,11 +79,11 @@ export abstract class Exercise {
 
 export class FreeText extends Exercise {
     avgWorkDurationMin = 15;
-    async work(thinkTimeFactor: number) {
+    async work() {
         if (Math.random() < 0.3) {
             await this.requestHelp();
         }
-        await this.think(thinkTimeFactor);
+        await this.think();
         await this.page.fill(this.selector(".ql-editor"), "abcdefghijklmnopqrstuvwxyz");
     }
     
@@ -96,8 +95,8 @@ export class FreeText extends Exercise {
 
 export class Survey extends Exercise {
     avgWorkDurationMin = 5;
-    async work(thinkTimeFactor: number) {
-        await this.think(thinkTimeFactor);
+    async work() {
+        await this.think();
         if (Math.random() < 0.2) {
             await this.requestHelp();
         }
@@ -152,8 +151,8 @@ export class Survey extends Exercise {
 export class MultipleChoice extends Exercise {
     avgWorkDurationMin = 5;
 
-    async work(thinkTimeFactor: number) {
-        await this.think(thinkTimeFactor);
+    async work() {
+        await this.think();
         if (Math.random() < 0.2) {
             await this.requestHelp();
         }
@@ -170,8 +169,8 @@ export class MultipleChoice extends Exercise {
 export class InputField extends Exercise {
     avgWorkDurationMin = 60;
 
-    async work(thinkTimeFactor: number) {
-        await this.think(thinkTimeFactor);
+    async work() {
+        await this.think();
         await this.page.fill(this.selector("#input"), "1");
     }
 

@@ -28,8 +28,13 @@ type controller struct {
 	RunnerFunc
 	runID            string
 	classesPerRunner int
-	activeRunners    []runner.Client
+	runners          activeRunners
 	provisioner      provisioner.Provisioner
+}
+
+type activeRunners struct {
+	sync.Locker
+	active []runner.Client
 }
 
 func NewLocal() Controller {
@@ -40,6 +45,7 @@ func NewLocal() Controller {
 		// Locally we only have one runner an it needs to support
 		// any number of classes for testing purposes
 		classesPerRunner: math.MaxInt32,
+		runners:          activeRunners{Locker: &sync.Mutex{}},
 	}
 }
 
@@ -47,6 +53,7 @@ func NewRemote(runID string, classesPerRunner int, p provisioner.Provisioner, dd
 	return &controller{
 		runID:            runID,
 		classesPerRunner: classesPerRunner,
+		runners:          activeRunners{Locker: &sync.Mutex{}},
 		provisioner:      p,
 		RunnerFunc: func() runner.Client {
 			return runner.NewRemote(runID, ddApiKey)
@@ -55,9 +62,13 @@ func NewRemote(runID string, classesPerRunner int, p provisioner.Provisioner, dd
 }
 
 func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
-	accountIdx := 0
 	defer c.cleanup()
 
+	errCh := make(chan error)
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
+
+	accountIdx := 0
 	currentLoad := 0
 	for _, load := range cfg.LoadCurve.LoadLevels {
 		log.Println("Next step with", load, "running classes")
@@ -65,20 +76,31 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 		if toAdd < 0 {
 			panic("No Load decrease implemented yet")
 		}
+
 		if toAdd > 0 {
-			if err := c.nextStep(ctx, c.runID, cfg.Url, cfg.Accounts[accountIdx:accountIdx+toAdd]); err != nil {
-				return err
-			}
+			wg.Add(1)
+			batch := cfg.Accounts[accountIdx : accountIdx+toAdd]
+			go func(b []accounts.Classroom) {
+				err := c.nextStep(ctx, c.runID, cfg.Url, b)
+				if err != nil {
+					errCh <- err
+				}
+				wg.Done()
+			}(batch)
 			accountIdx += toAdd
 		}
 		currentLoad = load
 
 		select {
 		case <-time.After(cfg.LoadCurve.StepSize.Duration):
+			// wait before continuing with the next step
 		case <-ctx.Done():
 			return ctx.Err()
+		case err := <-errCh:
+			return err
 		}
 	}
+
 	log.Println("Test is over")
 	return nil
 }
@@ -92,7 +114,9 @@ func (c *controller) nextStep(ctx context.Context, runID string, url string, acc
 		return err
 	}
 
-	c.activeRunners = append(c.activeRunners, runners...)
+	c.runners.Lock()
+	defer c.runners.Unlock()
+	c.runners.active = append(c.runners.active, runners...)
 	return nil
 }
 
@@ -100,8 +124,7 @@ func batchAccounts(accs []accounts.Classroom, classesPerRunner int) [][]accounts
 	var batches [][]accounts.Classroom
 	for i := 0; i < len(accs); i += classesPerRunner {
 		if i+classesPerRunner > len(accs) {
-			remaining := len(accs) - i
-			batches = append(batches, accs[i:remaining])
+			batches = append(batches, accs[i:])
 		} else {
 			batches = append(batches, accs[i:i+classesPerRunner])
 		}
@@ -121,15 +144,15 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 
 	ch := make(chan runnerResult, len(accsByRunner))
 	for _, accs := range accsByRunner {
-		go func(a []accounts.Classroom) {
-			r := c.RunnerFunc()
-			s := runner.Step{Url: url, Accounts: a}
-			if err := r.Start(ctx, &s, c.provisioner); err != nil {
+		r := c.RunnerFunc()
+		s := runner.Step{Url: url, Accounts: accs}
+		go func(step *runner.Step) {
+			if err := r.Start(ctx, step, c.provisioner); err != nil {
 				ch <- runnerResult{nil, err}
 			} else {
 				ch <- runnerResult{r, nil}
 			}
-		}(accs)
+		}(&s)
 	}
 
 	var runners []runner.Client
@@ -140,6 +163,7 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 			if errors.Is(r.err, context.Canceled) {
 				continue
 			}
+			log.Println("Error while starting runner:", r.err)
 			err = r.err
 			cancel()
 		} else {
@@ -158,7 +182,9 @@ func (c *controller) cleanup() {
 	log.Println("Cleaning up")
 
 	wg := sync.WaitGroup{}
-	for _, run := range c.activeRunners {
+	c.runners.Lock()
+	defer c.runners.Unlock()
+	for _, run := range c.runners.active {
 		wg.Add(1)
 		go func(r runner.Client) {
 			log.Println("Stopping runner:", r)

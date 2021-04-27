@@ -46,9 +46,12 @@ export default abstract class VirtualUser extends EventEmitter {
     }
 
     // Pauses for some time between 2.5s and 22.5s
-    async think() {
+    async think(timeSec?: number): Promise<void> {
+        if (!timeSec) {
+            timeSec = 10;
+        }
         const rand = Math.random() + 0.5; // 0.5 to 1.5
-        const thinkTime = rand * this.thinkTimeFactor * 10 * 1000;
+        const thinkTime = rand * this.thinkTimeFactor * timeSec * 1000;
         return new Promise(resolve => setTimeout(resolve, thinkTime));
     }
 
@@ -84,9 +87,11 @@ export default abstract class VirtualUser extends EventEmitter {
 
                 if (e instanceof errors.TimeoutError) {
                     this.logger.warn("Refreshing and trying again", e);
-                    await page.reload();
+                    this.reload(page);
                 } else {
-                    throw e;
+                    const context = page.context();
+                    this.page = await context.newPage();
+                    await this.run(this.page);
                 }
             }
         }
@@ -94,10 +99,20 @@ export default abstract class VirtualUser extends EventEmitter {
         return Promise.reject();
     }
 
+    async reload(page: Page) {
+        while (this.sessionActive()) {
+            try {
+                return await page.reload();
+            } catch(re) {
+                this.logger.warn("Failed to reload, trying again", re);
+            }
+        }
+    }
+
     async recordPage(page: Page) {
         const filename = this.filename();
-        const html = await page.innerHTML("html");
         try {
+            const html = await page.innerHTML("html");
             fs.writeFile(filename + ".html", html, (err) => {
                 if (err) {
                     this.logger.warn("Failed writing file:", err);
