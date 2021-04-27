@@ -28,8 +28,13 @@ type controller struct {
 	RunnerFunc
 	runID            string
 	classesPerRunner int
-	activeRunners    []runner.Client
+	runners          activeRunners
 	provisioner      provisioner.Provisioner
+}
+
+type activeRunners struct {
+	sync.Locker
+	active []runner.Client
 }
 
 func NewLocal() Controller {
@@ -40,6 +45,7 @@ func NewLocal() Controller {
 		// Locally we only have one runner an it needs to support
 		// any number of classes for testing purposes
 		classesPerRunner: math.MaxInt32,
+		runners:          activeRunners{Locker: &sync.Mutex{}},
 	}
 }
 
@@ -47,6 +53,7 @@ func NewRemote(runID string, classesPerRunner int, p provisioner.Provisioner, dd
 	return &controller{
 		runID:            runID,
 		classesPerRunner: classesPerRunner,
+		runners:          activeRunners{Locker: &sync.Mutex{}},
 		provisioner:      p,
 		RunnerFunc: func() runner.Client {
 			return runner.NewRemote(runID, ddApiKey)
@@ -55,7 +62,6 @@ func NewRemote(runID string, classesPerRunner int, p provisioner.Provisioner, dd
 }
 
 func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
-	accountIdx := 0
 	defer c.cleanup()
 
 	errCh := make(chan error)
@@ -106,7 +112,9 @@ func (c *controller) nextStep(ctx context.Context, runID string, url string, acc
 		return err
 	}
 
-	c.activeRunners = append(c.activeRunners, runners...)
+	c.runners.Lock()
+	defer c.runners.Unlock()
+	c.runners.active = append(c.runners.active, runners...)
 	return nil
 }
 
@@ -171,7 +179,9 @@ func (c *controller) cleanup() {
 	log.Println("Cleaning up")
 
 	wg := sync.WaitGroup{}
-	for _, run := range c.activeRunners {
+	c.runners.Lock()
+	defer c.runners.Unlock()
+	for _, run := range c.runners.active {
 		wg.Add(1)
 		go func(r runner.Client) {
 			log.Println("Stopping runner:", r)
