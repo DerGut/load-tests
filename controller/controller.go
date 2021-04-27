@@ -93,12 +93,14 @@ func (c *controller) Run(ctx context.Context, cfg RunConfig) error {
 
 		select {
 		case <-time.After(cfg.LoadCurve.StepSize.Duration):
+			// wait before continuing with the next step
 		case <-ctx.Done():
 			return ctx.Err()
 		case err := <-errCh:
 			return err
 		}
 	}
+
 	log.Println("Test is over")
 	return nil
 }
