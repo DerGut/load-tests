@@ -99,8 +99,8 @@ export default abstract class VirtualUser extends EventEmitter {
 
     async recordPage(page: Page) {
         const filename = this.filename();
-        const html = await page.innerHTML("html");
         try {
+            const html = await page.innerHTML("html");
             fs.writeFile(filename + ".html", html, (err) => {
                 if (err) {
                     this.logger.warn("Failed writing file:", err);
