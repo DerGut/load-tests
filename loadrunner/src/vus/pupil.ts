@@ -25,7 +25,7 @@ export default class VirtualPupil extends VirtualUser {
 
         await this.retryRefreshing(page, async () => {
             this.logger.info(`Visiting ${this.config.pageUrl}`);
-            await page.goto(this.config.pageUrl)
+            await page.goto(this.config.pageUrl);
         });
         await this.think();
 
