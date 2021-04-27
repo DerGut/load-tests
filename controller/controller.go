@@ -161,6 +161,7 @@ func (c *controller) startRunners(ctx context.Context, runID, url string, accsBy
 			if errors.Is(r.err, context.Canceled) {
 				continue
 			}
+			log.Println("Error while starting runner:", r.err)
 			err = r.err
 			cancel()
 		} else {
