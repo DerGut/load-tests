@@ -60,6 +60,7 @@ func (dop *doProvisioner) Provision(ctx context.Context, instanceID string) (Ins
 	}
 
 	if err = waitForReachable(ctx, d, dop.debug); err != nil {
+		log.Println("Destroying unready droplet:", d.Name)
 		if _, errDel := client.Droplets.Delete(context.TODO(), d.ID); errDel != nil {
 			log.Printf("Couldn't destroy droplet %s, please do so manually\n", d.Name)
 		}
