@@ -100,8 +100,7 @@ func batchAccounts(accs []accounts.Classroom, classesPerRunner int) [][]accounts
 	var batches [][]accounts.Classroom
 	for i := 0; i < len(accs); i += classesPerRunner {
 		if i+classesPerRunner > len(accs) {
-			remaining := len(accs) - i
-			batches = append(batches, accs[i:remaining])
+			batches = append(batches, accs[i:])
 		} else {
 			batches = append(batches, accs[i:i+classesPerRunner])
 		}
